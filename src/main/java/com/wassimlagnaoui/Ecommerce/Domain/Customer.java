@@ -1,0 +1,37 @@
+package com.wassimlagnaoui.Ecommerce.Domain;
+
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import jdk.jfr.DataAmount;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+@Entity
+@Data
+@AllArgsConstructor
+@NoArgsConstructor
+@Table(name = "customers")
+public class Customer {
+    @Id @GeneratedValue(strategy = GenerationType.UUID)
+    private Long id;
+
+
+    private String name;
+    private String email;
+
+    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<Order> orders;
+
+   @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+   private List<Address> addresses;
+
+
+   @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+   private List<Review> reviews;
+
+
+
+}
