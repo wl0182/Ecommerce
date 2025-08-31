@@ -32,6 +32,6 @@ public class Product {
     private Set<Category> categories;
 
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL)
-    private List<Review> reviews; 
+    private List<Review> reviews;
 
 }
