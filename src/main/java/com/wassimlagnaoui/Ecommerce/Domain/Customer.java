@@ -22,6 +22,8 @@ public class Customer {
     private String name;
     private String email;
 
+    private Double totalSpent;
+
     @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Order> orders;
 
@@ -31,6 +33,8 @@ public class Customer {
 
    @OneToMany(mappedBy = "customer", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
    private List<Review> reviews;
+
+
 
 
 
