@@ -22,14 +22,7 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.orders WHERE c.id = ?1")
     Optional<Customer> findByIdWithOrders(Long id);
 
-    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.addresses WHERE c.id = ?1")
-    Optional<Customer> findByIdWithAddresses(Long id);
 
-    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.orders LEFT JOIN FETCH c.addresses WHERE c.id = ?1")
-    Optional<Customer> findByIdWithOrdersAndAddresses(Long id);
-
-    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.orders LEFT JOIN FETCH c.addresses")
-    List<Customer> findAllWithOrdersAndAddresses();
 
     @Query ("SELECT c FROM Customer c LEFT JOIN FETCH c.reviews")
     List<Customer> findAllWithReviews();
