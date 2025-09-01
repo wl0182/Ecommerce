@@ -3,6 +3,7 @@ package com.wassimlagnaoui.Ecommerce.Service;
 import com.wassimlagnaoui.Ecommerce.Domain.Category;
 import com.wassimlagnaoui.Ecommerce.Domain.Product;
 import com.wassimlagnaoui.Ecommerce.Domain.Review;
+import com.wassimlagnaoui.Ecommerce.DTO.*;
 import com.wassimlagnaoui.Ecommerce.Repository.CategoryRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.ProductRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.ReviewRepository;
@@ -26,104 +27,131 @@ public class ProductService {
     @Autowired
     private CategoryRepository categoryRepository;
 
-    // Basic CRUD operations
-    public List<Product> getAllProducts() {
-        return productRepository.findAll();
+    @Autowired
+    private DTOMapper dtoMapper;
+
+    // Basic CRUD operations - now returning DTOs
+    public List<ProductDTO> getAllProducts() {
+        List<Product> products = productRepository.findAll();
+        return dtoMapper.toProductDTOList(products);
     }
 
-    public Page<Product> getAllProductsPaginated(Pageable pageable) {
-        return productRepository.findAll(pageable);
+    public Page<ProductDTO> getAllProductsPaginated(Pageable pageable) {
+        Page<Product> products = productRepository.findAll(pageable);
+        return products.map(dtoMapper::toProductDTO);
     }
 
-    public Optional<Product> getProductById(Long id) {
-        return productRepository.findById(id);
+    public Optional<ProductDTO> getProductById(Long id) {
+        Optional<Product> product = productRepository.findById(id);
+        return product.map(dtoMapper::toProductDTO);
     }
 
-    public Product saveProduct(Product product) {
-        return productRepository.save(product);
+    public ProductDTO saveProduct(ProductDTO productDTO) {
+        Product product = dtoMapper.toProductEntity(productDTO);
+        Product savedProduct = productRepository.save(product);
+        return dtoMapper.toProductDTO(savedProduct);
     }
 
     public void deleteProduct(Long id) {
         productRepository.deleteById(id);
     }
 
-    // Product search and filtering
-    public Optional<Product> findByName(String name) {
-        return productRepository.findByName(name);
+    // Product search and filtering - now returning DTOs
+    public Optional<ProductDTO> findByName(String name) {
+        Optional<Product> product = productRepository.findByName(name);
+        return product.map(dtoMapper::toProductDTO);
     }
 
-    public List<Product> searchByKeyword(String keyword) {
-        return productRepository.searchByKeyword(keyword);
+    public List<ProductDTO> searchByKeyword(String keyword) {
+        List<Product> products = productRepository.searchByKeyword(keyword);
+        return dtoMapper.toProductDTOList(products);
     }
 
-    public List<Product> findByPriceRange(Double minPrice, Double maxPrice) {
-        return productRepository.findByPriceBetween(minPrice, maxPrice);
+    public List<ProductDTO> findByPriceRange(Double minPrice, Double maxPrice) {
+        List<Product> products = productRepository.findByPriceBetween(minPrice, maxPrice);
+        return dtoMapper.toProductDTOList(products);
     }
 
-    public List<Product> findByCategoryName(String categoryName) {
-        return productRepository.findByCategoryName(categoryName);
+    public List<ProductDTO> findByCategoryName(String categoryName) {
+        List<Product> products = productRepository.findByCategoryName(categoryName);
+        return dtoMapper.toProductDTOList(products);
     }
 
-    // Stock management
-    public List<Product> getProductsInStock() {
-        return productRepository.findByStockGreaterThan(0);
+    // Stock management - now returning DTOs
+    public List<ProductDTO> getProductsInStock() {
+        List<Product> products = productRepository.findByStockGreaterThan(0);
+        return dtoMapper.toProductDTOList(products);
     }
 
-    public List<Product> getOutOfStockProducts() {
-        return productRepository.findByStockLessThan(1);
+    public List<ProductDTO> getOutOfStockProducts() {
+        List<Product> products = productRepository.findByStockLessThan(1);
+        return dtoMapper.toProductDTOList(products);
     }
 
-    public List<Product> getLowStockProducts(Integer threshold) {
-        return productRepository.findProductsWithLowStock(threshold);
+    public List<ProductDTO> getLowStockProducts(Integer threshold) {
+        List<Product> products = productRepository.findProductsWithLowStock(threshold);
+        return dtoMapper.toProductDTOList(products);
     }
 
-    public List<Product> getTopStockProducts() {
-        return productRepository.findTop5ByOrderByStockDesc();
+    public List<ProductDTO> getTopStockProducts() {
+        List<Product> products = productRepository.findTop5ByOrderByStockDesc();
+        return dtoMapper.toProductDTOList(products);
     }
 
-    // Sales and popularity
-    public List<Product> getTopSellingProducts() {
-        return productRepository.findTopSellingProducts();
+    // Sales and popularity - now returning DTOs
+    public List<ProductSummaryDTO> getTopSellingProducts() {
+        List<Product> products = productRepository.findTopSellingProducts();
+        return products.stream()
+                .map(product -> {
+                    Double avgRating = reviewRepository.findAverageRatingByProductId(product.getId());
+                    Long reviewCount = reviewRepository.countReviewsByProductId(product.getId());
+                    return dtoMapper.toProductSummaryDTO(product, avgRating, reviewCount);
+                })
+                .toList();
     }
 
-    // Stock operations
-    public Product updateStock(Long productId, Integer newStock) {
+    // Stock operations - now returning DTOs
+    public ProductDTO updateStock(Long productId, Integer newStock) {
         Optional<Product> productOpt = productRepository.findById(productId);
         if (productOpt.isPresent()) {
             Product product = productOpt.get();
             product.setStock(newStock);
-            return productRepository.save(product);
+            Product savedProduct = productRepository.save(product);
+            return dtoMapper.toProductDTO(savedProduct);
         }
         throw new RuntimeException("Product not found with id: " + productId);
     }
 
-    public Product reduceStock(Long productId, Integer quantity) {
+    public ProductDTO reduceStock(Long productId, Integer quantity) {
         Optional<Product> productOpt = productRepository.findById(productId);
         if (productOpt.isPresent()) {
             Product product = productOpt.get();
             if (product.getStock() >= quantity) {
                 product.setStock(product.getStock() - quantity);
-                return productRepository.save(product);
+                Product savedProduct = productRepository.save(product);
+                return dtoMapper.toProductDTO(savedProduct);
             }
             throw new RuntimeException("Insufficient stock for product: " + product.getName());
         }
         throw new RuntimeException("Product not found with id: " + productId);
     }
 
-    public Product increaseSalesCount(Long productId, Integer quantity) {
+    public ProductDTO increaseSalesCount(Long productId, Integer quantity) {
         Optional<Product> productOpt = productRepository.findById(productId);
         if (productOpt.isPresent()) {
             Product product = productOpt.get();
             Integer currentSales = product.getSalesCount() != null ? product.getSalesCount() : 0;
             product.setSalesCount(currentSales + quantity);
-            return productRepository.save(product);
+            Product savedProduct = productRepository.save(product);
+            return dtoMapper.toProductDTO(savedProduct);
         }
         throw new RuntimeException("Product not found with id: " + productId);
     }
 
-    // Review management
-    public List<Review> getProductReviews(Long productId) {
-        return reviewRepository.findByProductId(productId);
+    // Review management - now returning DTOs
+    public List<ReviewDTO> getProductReviews(Long productId) {
+        List<Review> reviews = reviewRepository.findByProductId(productId);
+        return dtoMapper.toReviewDTOList(reviews);
     }
 
     public Double getProductAverageRating(Long productId) {
@@ -134,22 +162,36 @@ public class ProductService {
         return reviewRepository.countReviewsByProductId(productId);
     }
 
-    public List<Review> getProductReviewsByRating(Long productId, Integer minRating) {
+    public List<ReviewDTO> getProductReviewsByRating(Long productId, Integer minRating) {
         List<Review> productReviews = reviewRepository.findByProductId(productId);
-        return productReviews.stream()
+        List<Review> filteredReviews = productReviews.stream()
                 .filter(review -> review.getRating() >= minRating)
                 .toList();
+        return dtoMapper.toReviewDTOList(filteredReviews);
     }
 
-    // Category management
-    public Product addCategoryToProduct(Long productId, String categoryName) {
+    // Get product with rating summary
+    public ProductSummaryDTO getProductSummary(Long productId) {
+        Optional<Product> productOpt = productRepository.findById(productId);
+        if (productOpt.isPresent()) {
+            Product product = productOpt.get();
+            Double avgRating = reviewRepository.findAverageRatingByProductId(productId);
+            Long reviewCount = reviewRepository.countReviewsByProductId(productId);
+            return dtoMapper.toProductSummaryDTO(product, avgRating, reviewCount);
+        }
+        throw new RuntimeException("Product not found with id: " + productId);
+    }
+
+    // Category management - now returning DTOs
+    public ProductDTO addCategoryToProduct(Long productId, String categoryName) {
         Optional<Product> productOpt = productRepository.findById(productId);
         Optional<Category> categoryOpt = categoryRepository.findByName(categoryName);
 
         if (productOpt.isPresent() && categoryOpt.isPresent()) {
             Product product = productOpt.get();
             product.getCategories().add(categoryOpt.get());
-            return productRepository.save(product);
+            Product savedProduct = productRepository.save(product);
+            return dtoMapper.toProductDTO(savedProduct);
         }
         throw new RuntimeException("Product or Category not found");
     }
@@ -164,32 +206,33 @@ public class ProductService {
         return product.isPresent() && product.get().getStock() >= requestedQuantity;
     }
 
-    public Product updateProduct(Long id, Product updatedProduct) {
+    public ProductDTO updateProduct(Long id, ProductDTO updatedProductDTO) {
         Optional<Product> productOpt = productRepository.findById(id);
         if (productOpt.isPresent()) {
             Product product = productOpt.get();
-            product.setName(updatedProduct.getName());
-            product.setDescription(updatedProduct.getDescription());
-            product.setPrice(updatedProduct.getPrice());
-            if (updatedProduct.getStock() != null) {
-                product.setStock(updatedProduct.getStock());
+            product.setName(updatedProductDTO.getName());
+            product.setDescription(updatedProductDTO.getDescription());
+            product.setPrice(updatedProductDTO.getPrice());
+            if (updatedProductDTO.getStock() != null) {
+                product.setStock(updatedProductDTO.getStock());
             }
-            return productRepository.save(product);
+            Product savedProduct = productRepository.save(product);
+            return dtoMapper.toProductDTO(savedProduct);
         }
         throw new RuntimeException("Product not found with id: " + id);
     }
 
-    // Product validation
-    public boolean validateProduct(Product product) {
-        if (product.getName() == null || product.getName().trim().isEmpty()) {
+    // Product validation - now using DTO
+    public boolean validateProduct(ProductDTO productDTO) {
+        if (productDTO.getName() == null || productDTO.getName().trim().isEmpty()) {
             return false;
         }
-        if (product.getPrice() == null || product.getPrice() <= 0) {
+        if (productDTO.getPrice() == null || productDTO.getPrice() <= 0) {
             return false;
         }
-        if (product.getStock() == null || product.getStock() < 0) {
+        if (productDTO.getStock() == null || productDTO.getStock() < 0) {
             return false;
         }
-        return !existsByName(product.getName());
+        return !existsByName(productDTO.getName());
     }
 }

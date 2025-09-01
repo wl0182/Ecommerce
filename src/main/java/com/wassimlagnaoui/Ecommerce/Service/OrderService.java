@@ -4,6 +4,7 @@ import com.wassimlagnaoui.Ecommerce.Domain.Customer;
 import com.wassimlagnaoui.Ecommerce.Domain.Order;
 import com.wassimlagnaoui.Ecommerce.Domain.OrderItem;
 import com.wassimlagnaoui.Ecommerce.Domain.Product;
+import com.wassimlagnaoui.Ecommerce.DTO.*;
 import com.wassimlagnaoui.Ecommerce.Repository.CustomerRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.OrderItemRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.OrderRepository;
@@ -37,54 +38,67 @@ public class OrderService {
     @Autowired
     private CustomerService customerService;
 
-    // Basic CRUD operations
-    public List<Order> getAllOrders() {
-        return orderRepository.findAll();
+    @Autowired
+    private DTOMapper dtoMapper;
+
+    // Basic CRUD operations - now returning DTOs
+    public List<OrderDTO> getAllOrders() {
+        List<Order> orders = orderRepository.findAll();
+        return dtoMapper.toOrderDTOList(orders);
     }
 
-    public Optional<Order> getOrderById(Long id) {
-        return orderRepository.findById(id);
+    public Optional<OrderDTO> getOrderById(Long id) {
+        Optional<Order> order = orderRepository.findById(id);
+        return order.map(dtoMapper::toOrderDTO);
     }
 
-    public Order saveOrder(Order order) {
-        return orderRepository.save(order);
+    public OrderDTO saveOrder(OrderDTO orderDTO) {
+        Order order = dtoMapper.toOrderEntity(orderDTO);
+        Order savedOrder = orderRepository.save(order);
+        return dtoMapper.toOrderDTO(savedOrder);
     }
 
     public void deleteOrder(Long id) {
         orderRepository.deleteById(id);
     }
 
-    // Order search and filtering
-    public Optional<Order> findByOrderNumber(String orderNumber) {
-        return orderRepository.findByOrderNumber(orderNumber);
+    // Order search and filtering - now returning DTOs
+    public Optional<OrderDTO> findByOrderNumber(String orderNumber) {
+        Optional<Order> order = orderRepository.findByOrderNumber(orderNumber);
+        return order.map(dtoMapper::toOrderDTO);
     }
 
-    public List<Order> getOrdersByCustomer(Long customerId) {
-        return orderRepository.findByCustomerId(customerId);
+    public List<OrderDTO> getOrdersByCustomer(Long customerId) {
+        List<Order> orders = orderRepository.findByCustomerId(customerId);
+        return dtoMapper.toOrderDTOList(orders);
     }
 
-    public List<Order> getOrdersByStatus(String status) {
-        return orderRepository.findByStatus(status);
+    public List<OrderDTO> getOrdersByStatus(String status) {
+        List<Order> orders = orderRepository.findByStatus(status);
+        return dtoMapper.toOrderDTOList(orders);
     }
 
-    public List<Order> getCustomerOrdersByStatus(Long customerId, String status) {
-        return orderRepository.findByCustomerIdAndStatus(customerId, status);
+    public List<OrderDTO> getCustomerOrdersByStatus(Long customerId, String status) {
+        List<Order> orders = orderRepository.findByCustomerIdAndStatus(customerId, status);
+        return dtoMapper.toOrderDTOList(orders);
     }
 
-    // Order item management
-    public List<OrderItem> getOrderItems(Long orderId) {
-        return orderItemRepository.findByOrderId(orderId);
+    // Order item management - now returning DTOs
+    public List<OrderItemDTO> getOrderItems(Long orderId) {
+        List<OrderItem> orderItems = orderItemRepository.findByOrderId(orderId);
+        return dtoMapper.toOrderItemDTOList(orderItems);
     }
 
-    public List<OrderItem> findOrderItemsByProductName(String productName) {
-        return orderItemRepository.findByProductName(productName);
+    public List<OrderItemDTO> findOrderItemsByProductName(String productName) {
+        List<OrderItem> orderItems = orderItemRepository.findByProductName(productName);
+        return dtoMapper.toOrderItemDTOList(orderItems);
     }
 
-    // Order creation and processing
+    // Order creation and processing - now returning DTOs
     @Transactional
-    public Order createOrder(Long customerId, List<OrderItem> orderItems) {
+    public OrderDTO createOrder(Long customerId, List<OrderItemDTO> orderItemDTOs) {
         Optional<Customer> customerOpt = customerRepository.findById(customerId);
-        if (!customerOpt.isPresent()) {
+        if (customerOpt.isEmpty()) {
             throw new RuntimeException("Customer not found with id: " + customerId);
         }
 
@@ -97,7 +111,15 @@ public class OrderService {
         order.setCustomer(customer);
 
         // Calculate total amount and validate stock
-        Double totalAmount = 0.0;
+        double totalAmount = 0.0;
+        List<OrderItem> orderItems = orderItemDTOs.stream()
+                .map(dto -> {
+                    OrderItem item = dtoMapper.toOrderItemEntity(dto);
+                    item.setOrder(order);
+                    return item;
+                })
+                .toList();
+
         for (OrderItem item : orderItems) {
             // Validate product availability
             if (!productService.isProductAvailable(getProductIdFromName(item.getProductName()), item.getQuantity())) {
@@ -105,7 +127,6 @@ public class OrderService {
             }
 
             totalAmount += item.getPrice() * item.getQuantity();
-            item.setOrder(order);
         }
 
         order.setTotalAmount(totalAmount);
@@ -124,33 +145,34 @@ public class OrderService {
         // Update customer total spent
         customerService.updateTotalSpent(customerId, totalAmount);
 
-        return savedOrder;
+        return dtoMapper.toOrderDTO(savedOrder);
     }
 
-    // Order status management
-    public Order updateOrderStatus(Long orderId, String newStatus) {
+    // Order status management - now returning DTOs
+    public OrderDTO updateOrderStatus(Long orderId, String newStatus) {
         Optional<Order> orderOpt = orderRepository.findById(orderId);
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
             order.setStatus(newStatus);
-            return orderRepository.save(order);
+            Order savedOrder = orderRepository.save(order);
+            return dtoMapper.toOrderDTO(savedOrder);
         }
         throw new RuntimeException("Order not found with id: " + orderId);
     }
 
-    public Order processOrder(Long orderId) {
+    public OrderDTO processOrder(Long orderId) {
         return updateOrderStatus(orderId, "PROCESSING");
     }
 
-    public Order shipOrder(Long orderId) {
+    public OrderDTO shipOrder(Long orderId) {
         return updateOrderStatus(orderId, "SHIPPED");
     }
 
-    public Order deliverOrder(Long orderId) {
+    public OrderDTO deliverOrder(Long orderId) {
         return updateOrderStatus(orderId, "DELIVERED");
     }
 
-    public Order cancelOrder(Long orderId) {
+    public OrderDTO cancelOrder(Long orderId) {
         Optional<Order> orderOpt = orderRepository.findById(orderId);
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
@@ -174,7 +196,8 @@ public class OrderService {
                 customerRepository.save(customer);
 
                 order.setStatus("CANCELLED");
-                return orderRepository.save(order);
+                Order savedOrder = orderRepository.save(order);
+                return dtoMapper.toOrderDTO(savedOrder);
             } else {
                 throw new RuntimeException("Cannot cancel order with status: " + order.getStatus());
             }
@@ -182,8 +205,8 @@ public class OrderService {
         throw new RuntimeException("Order not found with id: " + orderId);
     }
 
-    // Order item operations
-    public OrderItem addOrderItem(Long orderId, OrderItem orderItem) {
+    // Order item operations - now returning DTOs
+    public OrderItemDTO addOrderItem(Long orderId, OrderItemDTO orderItemDTO) {
         Optional<Order> orderOpt = orderRepository.findById(orderId);
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
@@ -193,6 +216,7 @@ public class OrderService {
                 throw new RuntimeException("Cannot add items to order with status: " + order.getStatus());
             }
 
+            OrderItem orderItem = dtoMapper.toOrderItemEntity(orderItemDTO);
             orderItem.setOrder(order);
             OrderItem savedItem = orderItemRepository.save(orderItem);
 
@@ -200,7 +224,7 @@ public class OrderService {
             order.setTotalAmount(order.getTotalAmount() + (orderItem.getPrice() * orderItem.getQuantity()));
             orderRepository.save(order);
 
-            return savedItem;
+            return dtoMapper.toOrderItemDTO(savedItem);
         }
         throw new RuntimeException("Order not found with id: " + orderId);
     }
@@ -245,8 +269,8 @@ public class OrderService {
         return false;
     }
 
-    // Update order
-    public Order updateOrder(Long id, Order updatedOrder) {
+    // Update order - now using DTOs
+    public OrderDTO updateOrder(Long id, OrderDTO updatedOrderDTO) {
         Optional<Order> orderOpt = orderRepository.findById(id);
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
@@ -256,11 +280,12 @@ public class OrderService {
                 throw new RuntimeException("Cannot update order with status: " + order.getStatus());
             }
 
-            order.setStatus(updatedOrder.getStatus());
-            if (updatedOrder.getTotalAmount() != null) {
-                order.setTotalAmount(updatedOrder.getTotalAmount());
+            order.setStatus(updatedOrderDTO.getStatus());
+            if (updatedOrderDTO.getTotalAmount() != null) {
+                order.setTotalAmount(updatedOrderDTO.getTotalAmount());
             }
-            return orderRepository.save(order);
+            Order savedOrder = orderRepository.save(order);
+            return dtoMapper.toOrderDTO(savedOrder);
         }
         throw new RuntimeException("Order not found with id: " + id);
     }
