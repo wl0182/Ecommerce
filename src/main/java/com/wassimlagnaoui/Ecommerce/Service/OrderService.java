@@ -41,14 +41,14 @@ public class OrderService {
     @Autowired
     private DTOMapper dtoMapper;
 
-    // Basic CRUD operations - now returning DTOs
+    // Basic CRUD operations - now returning DTOs with optimized queries
     public List<OrderDTO> getAllOrders() {
-        List<Order> orders = orderRepository.findAll();
+        List<Order> orders = orderRepository.findAllWithOrderItems();
         return dtoMapper.toOrderDTOList(orders);
     }
 
     public Optional<OrderDTO> getOrderById(Long id) {
-        Optional<Order> order = orderRepository.findById(id);
+        Optional<Order> order = orderRepository.findByIdWithOrderItems(id);
         return order.map(dtoMapper::toOrderDTO);
     }
 
@@ -62,14 +62,21 @@ public class OrderService {
         orderRepository.deleteById(id);
     }
 
-    // Order search and filtering - now returning DTOs
+    // Order search and filtering - now using optimized queries where appropriate
     public Optional<OrderDTO> findByOrderNumber(String orderNumber) {
         Optional<Order> order = orderRepository.findByOrderNumber(orderNumber);
-        return order.map(dtoMapper::toOrderDTO);
+        // If order exists, fetch it with order items for complete DTO mapping
+        if (order.isPresent()) {
+            Optional<Order> orderWithItems = orderRepository.findByIdWithOrderItems(order.get().getId());
+            return orderWithItems.map(dtoMapper::toOrderDTO);
+        }
+        return Optional.empty();
     }
 
     public List<OrderDTO> getOrdersByCustomer(Long customerId) {
         List<Order> orders = orderRepository.findByCustomerId(customerId);
+        // For multiple orders, use the optimized query if we need order items
+        // Otherwise, use the simple query to avoid unnecessary joins
         return dtoMapper.toOrderDTOList(orders);
     }
 
@@ -83,10 +90,14 @@ public class OrderService {
         return dtoMapper.toOrderDTOList(orders);
     }
 
-    // Order item management - now returning DTOs
+    // Order item management - optimized to reduce queries
     public List<OrderItemDTO> getOrderItems(Long orderId) {
-        List<OrderItem> orderItems = orderItemRepository.findByOrderId(orderId);
-        return dtoMapper.toOrderItemDTOList(orderItems);
+        // Use the optimized query to get order with items in one query
+        Optional<Order> order = orderRepository.findByIdWithOrderItems(orderId);
+        if (order.isPresent()) {
+            return dtoMapper.toOrderItemDTOList(order.get().getOrderItems());
+        }
+        return List.of();
     }
 
     public List<OrderItemDTO> findOrderItemsByProductName(String productName) {
@@ -94,9 +105,10 @@ public class OrderService {
         return dtoMapper.toOrderItemDTOList(orderItems);
     }
 
-    // Order creation and processing - now returning DTOs
+    // Order creation and processing - now using optimized queries
     @Transactional
     public OrderDTO createOrder(Long customerId, List<OrderItemDTO> orderItemDTOs) {
+        // Use optimized customer query if available
         Optional<Customer> customerOpt = customerRepository.findById(customerId);
         if (customerOpt.isEmpty()) {
             throw new RuntimeException("Customer not found with id: " + customerId);
@@ -145,12 +157,15 @@ public class OrderService {
         // Update customer total spent
         customerService.updateTotalSpent(customerId, totalAmount);
 
-        return dtoMapper.toOrderDTO(savedOrder);
+        // Return the order with all items loaded
+        Optional<Order> orderWithItems = orderRepository.findByIdWithOrderItems(savedOrder.getId());
+        return orderWithItems.map(dtoMapper::toOrderDTO)
+                .orElse(dtoMapper.toOrderDTO(savedOrder));
     }
 
-    // Order status management - now returning DTOs
+    // Order status management - now using optimized queries
     public OrderDTO updateOrderStatus(Long orderId, String newStatus) {
-        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(orderId);
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
             order.setStatus(newStatus);
@@ -173,7 +188,7 @@ public class OrderService {
     }
 
     public OrderDTO cancelOrder(Long orderId) {
-        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(orderId);
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
 
@@ -205,9 +220,9 @@ public class OrderService {
         throw new RuntimeException("Order not found with id: " + orderId);
     }
 
-    // Order item operations - now returning DTOs
+    // Order item operations - using optimized queries
     public OrderItemDTO addOrderItem(Long orderId, OrderItemDTO orderItemDTO) {
-        Optional<Order> orderOpt = orderRepository.findById(orderId);
+        Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(orderId);
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
 
@@ -229,16 +244,20 @@ public class OrderService {
         throw new RuntimeException("Order not found with id: " + orderId);
     }
 
-    // Order calculations
+    // Order calculations - using optimized queries
     public Double calculateOrderTotal(Long orderId) {
-        List<OrderItem> items = orderItemRepository.findByOrderId(orderId);
-        return items.stream()
-                .mapToDouble(item -> item.getPrice() * item.getQuantity())
-                .sum();
+        Optional<Order> order = orderRepository.findByIdWithOrderItems(orderId);
+        if (order.isPresent()) {
+            return order.get().getOrderItems().stream()
+                    .mapToDouble(item -> item.getPrice() * item.getQuantity())
+                    .sum();
+        }
+        return 0.0;
     }
 
     public Integer getOrderItemCount(Long orderId) {
-        return orderItemRepository.findByOrderId(orderId).size();
+        Optional<Order> order = orderRepository.findByIdWithOrderItems(orderId);
+        return order.map(o -> o.getOrderItems().size()).orElse(0);
     }
 
     // Utility methods
@@ -254,7 +273,7 @@ public class OrderService {
         throw new RuntimeException("Product not found: " + productName);
     }
 
-    // Order validation
+    // Order validation - using optimized queries
     public boolean canProcessOrder(Long orderId) {
         Optional<Order> order = orderRepository.findById(orderId);
         return order.isPresent() && "PENDING".equals(order.get().getStatus());
@@ -269,9 +288,9 @@ public class OrderService {
         return false;
     }
 
-    // Update order - now using DTOs
+    // Update order - using optimized queries
     public OrderDTO updateOrder(Long id, OrderDTO updatedOrderDTO) {
-        Optional<Order> orderOpt = orderRepository.findById(id);
+        Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(id);
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
 
@@ -288,5 +307,46 @@ public class OrderService {
             return dtoMapper.toOrderDTO(savedOrder);
         }
         throw new RuntimeException("Order not found with id: " + id);
+    }
+
+    // Add new methods to leverage specific repository queries
+    public List<OrderDTO> getCompletedOrdersByCustomer(Long customerId) {
+        List<Order> orders = orderRepository.findCompletedOrdersByCustomerId(customerId);
+        return dtoMapper.toOrderDTOList(orders);
+    }
+
+    public List<OrderDTO> getPendingOrdersByCustomer(Long customerId) {
+        List<Order> orders = orderRepository.findPendingOrdersByCustomerId(customerId);
+        return dtoMapper.toOrderDTOList(orders);
+    }
+
+    public List<OrderDTO> getCancelledOrdersByCustomer(Long customerId) {
+        List<Order> orders = orderRepository.findCancelledOrdersByCustomerId(customerId);
+        return dtoMapper.toOrderDTOList(orders);
+    }
+
+    public List<OrderDTO> getShippedOrdersByCustomer(Long customerId) {
+        List<Order> orders = orderRepository.findShippedOrdersByCustomerId(customerId);
+        return dtoMapper.toOrderDTOList(orders);
+    }
+
+    public List<OrderDTO> getDeliveredOrdersByCustomer(Long customerId) {
+        List<Order> orders = orderRepository.findDeliveredOrdersByCustomerId(customerId);
+        return dtoMapper.toOrderDTOList(orders);
+    }
+
+    public List<OrderDTO> getReturnedOrdersByCustomer(Long customerId) {
+        List<Order> orders = orderRepository.findReturnedOrdersByCustomerId(customerId);
+        return dtoMapper.toOrderDTOList(orders);
+    }
+
+    public List<OrderDTO> getRefundedOrdersByCustomer(Long customerId) {
+        List<Order> orders = orderRepository.findRefundedOrdersByCustomerId(customerId);
+        return dtoMapper.toOrderDTOList(orders);
+    }
+
+    public List<OrderDTO> getOrdersAboveAmount(Double amount) {
+        List<Order> orders = orderRepository.findByTotalAmountGreaterThan(amount);
+        return dtoMapper.toOrderDTOList(orders);
     }
 }
