@@ -4,7 +4,7 @@ package com.wassimlagnaoui.Ecommerce.Domain;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import jdk.jfr.DataAmount;
+
 import lombok.NoArgsConstructor;
 
 import java.util.List;
