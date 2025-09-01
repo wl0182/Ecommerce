@@ -1,6 +1,8 @@
 package com.wassimlagnaoui.Ecommerce.Repository;
 
 import com.wassimlagnaoui.Ecommerce.Domain.Product;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,4 +23,24 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     @Query("SELECT p FROM Product p WHERE p.name LIKE %:keyword% OR p.description LIKE %:keyword%")
     List<Product> searchByKeyword(@Param("keyword") String keyword);
+
+    // find top 5 products by stock
+    @Query("SELECT p FROM Product p ORDER BY p.stock DESC limit 5")
+    List<Product> findTop5ByOrderByStockDesc();
+
+    @Override
+    Page<Product> findAll(Pageable pageable);
+
+    boolean existsByName(String name);
+
+    // find top-selling products
+    @Query("SELECT p FROM Product p ORDER BY p.salesCount DESC")
+    List<Product> findTopSellingProducts();
+
+    // find products with low stock (less than a certain threshold)
+    @Query("SELECT p FROM Product p WHERE p.stock < :threshold")
+    List<Product> findProductsWithLowStock(@Param("threshold") Integer threshold);
+
+
+
 }

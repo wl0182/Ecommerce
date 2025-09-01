@@ -21,6 +21,7 @@ public class Product {
     private String description;
     private Double price;
     private Integer stock;
+    private Integer salesCount;
 
 
     @ManyToMany
