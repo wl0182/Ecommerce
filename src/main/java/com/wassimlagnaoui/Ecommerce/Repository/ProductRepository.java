@@ -24,6 +24,37 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE p.name LIKE %:keyword% OR p.description LIKE %:keyword%")
     List<Product> searchByKeyword(@Param("keyword") String keyword);
 
+    // Account for lazy loading of reviews to avoid N+1 problem
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.reviews WHERE p.id = ?1")
+    Optional<Product> findByIdWithReviews(Long id);
+
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.reviews")
+    List<Product> findAllWithReviews();
+
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.categories WHERE p.id = ?1")
+    Optional<Product> findByIdWithCategories(Long id);
+
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.categories")
+    List<Product> findAllWithCategories();
+
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.reviews LEFT JOIN FETCH p.categories WHERE p.id = ?1")
+    Optional<Product> findByIdWithAllDetails(Long id);
+
+    @Query("SELECT p FROM Product p LEFT JOIN FETCH p.reviews LEFT JOIN FETCH p.categories")
+    List<Product> findAllWithAllDetails();
+
+    // add other important queries
+
+    // products with average rating greater than a certain value
+    @Query("SELECT p FROM Product p JOIN p.reviews r GROUP BY p HAVING AVG(r.rating) > :rating")
+    List<Product> findByAverageRatingGreaterThan(@Param("rating") Double rating);
+
+    @Query("SELECT p FROM Product p JOIN p.reviews r GROUP BY p HAVING AVG(r.rating) < :rating")
+    List<Product> findByAverageRatingLessThan(@Param("rating") Double rating);
+
+    @Query("SELECT p FROM Product p JOIN p.reviews r GROUP BY p HAVING AVG(r.rating) = :rating")
+    List<Product> findByAverageRatingEquals(@Param("rating") Double rating);
+
     // find top 5 products by stock
     @Query("SELECT p FROM Product p ORDER BY p.stock DESC limit 5")
     List<Product> findTop5ByOrderByStockDesc();
