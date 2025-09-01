@@ -15,6 +15,38 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     Optional<Customer> findByName(String name);
 
     // Find customers who spent more than a certain amount
-    @Query("SELECT c FROM Customer c WHERE c.totalSpent > ?1")
+    @Query("SELECT c FROM Customer c join FETCH c.orders WHERE c.totalSpent > ?1")
     List<Customer> findByTotalSpentGreaterThan(Double amount);
+
+    // Account for lazy loading of orders
+    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.orders WHERE c.id = ?1")
+    Optional<Customer> findByIdWithOrders(Long id);
+
+    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.addresses WHERE c.id = ?1")
+    Optional<Customer> findByIdWithAddresses(Long id);
+
+    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.orders LEFT JOIN FETCH c.addresses WHERE c.id = ?1")
+    Optional<Customer> findByIdWithOrdersAndAddresses(Long id);
+
+    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.orders LEFT JOIN FETCH c.addresses")
+    List<Customer> findAllWithOrdersAndAddresses();
+
+    @Query ("SELECT c FROM Customer c LEFT JOIN FETCH c.reviews")
+    List<Customer> findAllWithReviews();
+
+    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.reviews WHERE c.id = ?1")
+    Optional<Customer> findByIdWithReviews(Long id);
+
+    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.orders LEFT JOIN FETCH c.addresses LEFT JOIN FETCH c.reviews WHERE c.id = ?1")
+    Optional<Customer> findByIdWithAllDetails(Long id);
+
+    @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.orders LEFT JOIN FETCH c.addresses LEFT JOIN FETCH c.reviews")
+    List<Customer> findAllWithAllDetails();
+
+
+    // Add Specific queries
+    @Query("SELECT c FROM Customer c WHERE SIZE(c.orders) > ?1" )
+    List<Customer> findCustomersWithMoreThanNOrders(int n);
+
+
 }
