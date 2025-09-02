@@ -53,45 +53,50 @@ public class OrderService {
     }
 
     public Optional<OrderDTO> getOrderById(String id) {
+        Optional<Order> order = orderRepository.findByIdWithOrderItems(id);
+        return order.map(dtoMapper::toOrderDTO);
+    }
+
+    public OrderDTO saveOrder(OrderDTO orderDTO) {
+        Order order = dtoMapper.toOrderEntity(orderDTO);
+        Order savedOrder = orderRepository.save(order);
+        return dtoMapper.toOrderDTO(savedOrder);
+    }
+
     public void deleteOrder(String id) {
+        orderRepository.deleteById(id);
+    }
+
+    // Order search and filtering - now using optimized queries where appropriate
+    public Optional<OrderDTO> findByOrderNumber(String orderNumber) {
+        Optional<Order> order = orderRepository.findByOrderNumber(orderNumber);
+        // If order exists, fetch it with order items for complete DTO mapping
+        if (order.isPresent()) {
+            Optional<Order> orderWithItems = orderRepository.findByIdWithOrderItems(order.get().getId());
+            return orderWithItems.map(dtoMapper::toOrderDTO);
+        }
+        return Optional.empty();
+    }
+
     public List<OrderDTO> getOrdersByCustomer(String customerId) {
-    public List<OrderDTO> getCustomerOrdersByStatus(String customerId, String status) {
-    public List<OrderItemDTO> getOrderItems(String orderId) {
-    public OrderDTO createOrder(String customerId, List<OrderItemDTO> orderItemDTOs) {
-            String productId = getProductIdFromName(item.getProductName());
-    public OrderDTO updateOrderStatus(String orderId, String newStatus) {
-    public OrderDTO processOrder(String orderId) {
-    public OrderDTO shipOrder(String orderId) {
-    public OrderDTO deliverOrder(String orderId) {
-    public OrderDTO cancelOrder(String orderId) {
-                    String productId = getProductIdFromName(item.getProductName());
-    public OrderItemDTO addOrderItem(String orderId, OrderItemDTO orderItemDTO) {
-    public Double calculateOrderTotal(String orderId) {
-    public Integer getOrderItemCount(String orderId) {
-    private String getProductIdFromName(String productName) {
-    public boolean canProcessOrder(String orderId) {
-    public boolean canCancelOrder(String orderId) {
-    public OrderDTO updateOrder(String id, OrderDTO updatedOrderDTO) {
-    public List<OrderDTO> getCompletedOrdersByCustomer(String customerId) {
-    public List<OrderDTO> getPendingOrdersByCustomer(String customerId) {
-    public List<OrderDTO> getCancelledOrdersByCustomer(String customerId) {
-    public List<OrderDTO> getShippedOrdersByCustomer(String customerId) {
-    public List<OrderDTO> getDeliveredOrdersByCustomer(String customerId) {
-    public List<OrderDTO> getReturnedOrdersByCustomer(String customerId) {
-    public List<OrderDTO> getRefundedOrdersByCustomer(String customerId) {
+        List<Order> orders = orderRepository.findByCustomerId(customerId);
+        // For multiple orders, use the optimized query if we need order items
+        // Otherwise, use the simple query to avoid unnecessary joins
+        return dtoMapper.toOrderDTOList(orders);
+    }
 
     public List<OrderDTO> getOrdersByStatus(String status) {
         List<Order> orders = orderRepository.findByStatus(status);
         return dtoMapper.toOrderDTOList(orders);
     }
 
-    public List<OrderDTO> getCustomerOrdersByStatus(Long customerId, String status) {
+    public List<OrderDTO> getCustomerOrdersByStatus(String customerId, String status) {
         List<Order> orders = orderRepository.findByCustomerIdAndStatus(customerId, status);
         return dtoMapper.toOrderDTOList(orders);
     }
 
     // Order item management - optimized to reduce queries
-    public List<OrderItemDTO> getOrderItems(Long orderId) {
+    public List<OrderItemDTO> getOrderItems(String orderId) {
         // Use the optimized query to get order with items in one query
         Optional<Order> order = orderRepository.findByIdWithOrderItems(orderId);
         if (order.isPresent()) {
@@ -107,7 +112,7 @@ public class OrderService {
 
     // Order creation and processing - now using optimized queries
     @Transactional
-    public OrderDTO createOrder(Long customerId, List<OrderItemDTO> orderItemDTOs) {
+    public OrderDTO createOrder(String customerId, List<OrderItemDTO> orderItemDTOs) {
         // Use optimized customer query if available
         Optional<Customer> customerOpt = customerRepository.findById(customerId);
         if (customerOpt.isEmpty()) {
@@ -149,7 +154,7 @@ public class OrderService {
 
         // Update product stock and sales count
         for (OrderItem item : orderItems) {
-            Long productId = getProductIdFromName(item.getProductName());
+            String productId = getProductIdFromName(item.getProductName());
             productService.reduceStock(productId, item.getQuantity());
             productService.increaseSalesCount(productId, item.getQuantity());
         }
@@ -164,7 +169,7 @@ public class OrderService {
     }
 
     // Order status management - now using optimized queries
-    public OrderDTO updateOrderStatus(Long orderId, String newStatus) {
+    public OrderDTO updateOrderStatus(String orderId, String newStatus) {
         Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(orderId);
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
@@ -175,19 +180,19 @@ public class OrderService {
         throw new OrderNotFoundException(orderId);
     }
 
-    public OrderDTO processOrder(Long orderId) {
+    public OrderDTO processOrder(String orderId) {
         return updateOrderStatus(orderId, "PROCESSING");
     }
 
-    public OrderDTO shipOrder(Long orderId) {
+    public OrderDTO shipOrder(String orderId) {
         return updateOrderStatus(orderId, "SHIPPED");
     }
 
-    public OrderDTO deliverOrder(Long orderId) {
+    public OrderDTO deliverOrder(String orderId) {
         return updateOrderStatus(orderId, "DELIVERED");
     }
 
-    public OrderDTO cancelOrder(Long orderId) {
+    public OrderDTO cancelOrder(String orderId) {
         Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(orderId);
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
@@ -196,7 +201,7 @@ public class OrderService {
             if ("PENDING".equals(order.getStatus()) || "PROCESSING".equals(order.getStatus())) {
                 // Restore product stock
                 for (OrderItem item : order.getOrderItems()) {
-                    Long productId = getProductIdFromName(item.getProductName());
+                    String productId = getProductIdFromName(item.getProductName());
                     Optional<Product> productOpt = productRepository.findById(productId);
                     if (productOpt.isPresent()) {
                         Product product = productOpt.get();
@@ -221,7 +226,7 @@ public class OrderService {
     }
 
     // Order item operations - using optimized queries
-    public OrderItemDTO addOrderItem(Long orderId, OrderItemDTO orderItemDTO) {
+    public OrderItemDTO addOrderItem(String orderId, OrderItemDTO orderItemDTO) {
         Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(orderId);
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
@@ -245,7 +250,7 @@ public class OrderService {
     }
 
     // Order calculations - using optimized queries
-    public Double calculateOrderTotal(Long orderId) {
+    public Double calculateOrderTotal(String orderId) {
         Optional<Order> order = orderRepository.findByIdWithOrderItems(orderId);
         if (order.isPresent()) {
             return order.get().getOrderItems().stream()
@@ -255,7 +260,7 @@ public class OrderService {
         return 0.0;
     }
 
-    public Integer getOrderItemCount(Long orderId) {
+    public Integer getOrderItemCount(String orderId) {
         Optional<Order> order = orderRepository.findByIdWithOrderItems(orderId);
         return order.map(o -> o.getOrderItems().size()).orElse(0);
     }
@@ -265,7 +270,7 @@ public class OrderService {
         return "ORD-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
     }
 
-    private Long getProductIdFromName(String productName) {
+    private String getProductIdFromName(String productName) {
         Optional<Product> product = productRepository.findByName(productName);
         if (product.isPresent()) {
             return product.get().getId();
@@ -274,12 +279,12 @@ public class OrderService {
     }
 
     // Order validation - using optimized queries
-    public boolean canProcessOrder(Long orderId) {
+    public boolean canProcessOrder(String orderId) {
         Optional<Order> order = orderRepository.findById(orderId);
         return order.isPresent() && "PENDING".equals(order.get().getStatus());
     }
 
-    public boolean canCancelOrder(Long orderId) {
+    public boolean canCancelOrder(String orderId) {
         Optional<Order> order = orderRepository.findById(orderId);
         if (order.isPresent()) {
             String status = order.get().getStatus();
@@ -289,7 +294,7 @@ public class OrderService {
     }
 
     // Update order - using optimized queries
-    public OrderDTO updateOrder(Long id, OrderDTO updatedOrderDTO) {
+    public OrderDTO updateOrder(String id, OrderDTO updatedOrderDTO) {
         Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(id);
         if (orderOpt.isPresent()) {
             Order order = orderOpt.get();
@@ -310,37 +315,37 @@ public class OrderService {
     }
 
     // Add new methods to leverage specific repository queries
-    public List<OrderDTO> getCompletedOrdersByCustomer(Long customerId) {
+    public List<OrderDTO> getCompletedOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findCompletedOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
-    public List<OrderDTO> getPendingOrdersByCustomer(Long customerId) {
+    public List<OrderDTO> getPendingOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findPendingOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
-    public List<OrderDTO> getCancelledOrdersByCustomer(Long customerId) {
+    public List<OrderDTO> getCancelledOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findCancelledOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
-    public List<OrderDTO> getShippedOrdersByCustomer(Long customerId) {
+    public List<OrderDTO> getShippedOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findShippedOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
-    public List<OrderDTO> getDeliveredOrdersByCustomer(Long customerId) {
+    public List<OrderDTO> getDeliveredOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findDeliveredOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
-    public List<OrderDTO> getReturnedOrdersByCustomer(Long customerId) {
+    public List<OrderDTO> getReturnedOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findReturnedOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
-    public List<OrderDTO> getRefundedOrdersByCustomer(Long customerId) {
+    public List<OrderDTO> getRefundedOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findRefundedOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
