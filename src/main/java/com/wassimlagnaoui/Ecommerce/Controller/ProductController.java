@@ -2,6 +2,11 @@ package com.wassimlagnaoui.Ecommerce.Controller;
 
 import com.wassimlagnaoui.Ecommerce.DTO.*;
 import com.wassimlagnaoui.Ecommerce.Service.ProductService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -16,36 +21,62 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/products")
 @CrossOrigin(origins = "*")
+@Tag(name = "Product Management", description = "APIs for managing products in the ecommerce system")
 public class ProductController {
 
     @Autowired
     private ProductService productService;
 
-    // Basic CRUD operations - now using DTOs
+    @Operation(summary = "Get all products", description = "Retrieve a list of all products")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved products"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping
     public ResponseEntity<List<ProductDTO>> getAllProducts() {
         List<ProductDTO> products = productService.getAllProducts();
         return ResponseEntity.ok(products);
     }
 
+    @Operation(summary = "Get products with pagination", description = "Retrieve products with pagination support")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved paginated products"),
+            @ApiResponse(responseCode = "400", description = "Invalid pagination parameters")
+    })
     @GetMapping("/paginated")
     public ResponseEntity<Page<ProductDTO>> getAllProductsPaginated(
+            @Parameter(description = "Page number (0-based)", example = "0")
             @RequestParam(defaultValue = "0") int page,
+            @Parameter(description = "Number of items per page", example = "10")
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<ProductDTO> products = productService.getAllProductsPaginated(pageable);
         return ResponseEntity.ok(products);
     }
 
+    @Operation(summary = "Get product by ID", description = "Retrieve a specific product by its ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Product found"),
+            @ApiResponse(responseCode = "404", description = "Product not found")
+    })
     @GetMapping("/{id}")
-    public ResponseEntity<ProductDTO> getProductById(@PathVariable Long id) {
+    public ResponseEntity<ProductDTO> getProductById(
+            @Parameter(description = "Product ID", example = "1")
+            @PathVariable Long id) {
         Optional<ProductDTO> product = productService.getProductById(id);
         return product.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
 
+    @Operation(summary = "Get product summary", description = "Retrieve a summary of a product including basic details")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Product summary retrieved"),
+            @ApiResponse(responseCode = "404", description = "Product not found")
+    })
     @GetMapping("/{id}/summary")
-    public ResponseEntity<ProductSummaryDTO> getProductSummary(@PathVariable Long id) {
+    public ResponseEntity<ProductSummaryDTO> getProductSummary(
+            @Parameter(description = "Product ID", example = "1")
+            @PathVariable Long id) {
         try {
             ProductSummaryDTO productSummary = productService.getProductSummary(id);
             return ResponseEntity.ok(productSummary);
@@ -54,8 +85,15 @@ public class ProductController {
         }
     }
 
+    @Operation(summary = "Create a new product", description = "Add a new product to the inventory")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Product created successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid product data")
+    })
     @PostMapping
-    public ResponseEntity<ProductDTO> createProduct(@RequestBody ProductDTO product) {
+    public ResponseEntity<ProductDTO> createProduct(
+            @Parameter(description = "Product details to create")
+            @RequestBody ProductDTO product) {
         try {
             if (!productService.validateProduct(product)) {
                 return ResponseEntity.badRequest().build();
@@ -67,8 +105,18 @@ public class ProductController {
         }
     }
 
+    @Operation(summary = "Update a product", description = "Update an existing product by ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Product updated successfully"),
+            @ApiResponse(responseCode = "404", description = "Product not found"),
+            @ApiResponse(responseCode = "400", description = "Invalid product data")
+    })
     @PutMapping("/{id}")
-    public ResponseEntity<ProductDTO> updateProduct(@PathVariable Long id, @RequestBody ProductDTO product) {
+    public ResponseEntity<ProductDTO> updateProduct(
+            @Parameter(description = "Product ID", example = "1")
+            @PathVariable Long id,
+            @Parameter(description = "Updated product details")
+            @RequestBody ProductDTO product) {
         try {
             ProductDTO updatedProduct = productService.updateProduct(id, product);
             return ResponseEntity.ok(updatedProduct);
@@ -77,8 +125,15 @@ public class ProductController {
         }
     }
 
+    @Operation(summary = "Delete a product", description = "Remove a product from the inventory")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Product deleted successfully"),
+            @ApiResponse(responseCode = "404", description = "Product not found")
+    })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProduct(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteProduct(
+            @Parameter(description = "Product ID", example = "1")
+            @PathVariable Long id) {
         try {
             productService.deleteProduct(id);
             return ResponseEntity.noContent().build();
