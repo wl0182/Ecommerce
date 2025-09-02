@@ -4,6 +4,9 @@ import com.wassimlagnaoui.Ecommerce.Domain.Category;
 import com.wassimlagnaoui.Ecommerce.Domain.Product;
 import com.wassimlagnaoui.Ecommerce.Domain.Review;
 import com.wassimlagnaoui.Ecommerce.DTO.*;
+import com.wassimlagnaoui.Ecommerce.Exception.CategoryNotFoundException;
+import com.wassimlagnaoui.Ecommerce.Exception.InsufficientStockException;
+import com.wassimlagnaoui.Ecommerce.Exception.ProductNotFoundException;
 import com.wassimlagnaoui.Ecommerce.Repository.CategoryRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.ProductRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.ReviewRepository;
@@ -119,7 +122,7 @@ public class ProductService {
             Product savedProduct = productRepository.save(product);
             return dtoMapper.toProductDTO(savedProduct);
         }
-        throw new RuntimeException("Product not found with id: " + productId);
+        throw new ProductNotFoundException(productId);
     }
 
     public ProductDTO reduceStock(Long productId, Integer quantity) {
@@ -131,9 +134,9 @@ public class ProductService {
                 Product savedProduct = productRepository.save(product);
                 return dtoMapper.toProductDTO(savedProduct);
             }
-            throw new RuntimeException("Insufficient stock for product: " + product.getName());
+            throw new InsufficientStockException(product.getName(), quantity, product.getStock());
         }
-        throw new RuntimeException("Product not found with id: " + productId);
+        throw new ProductNotFoundException(productId);
     }
 
     public ProductDTO increaseSalesCount(Long productId, Integer quantity) {
@@ -145,7 +148,7 @@ public class ProductService {
             Product savedProduct = productRepository.save(product);
             return dtoMapper.toProductDTO(savedProduct);
         }
-        throw new RuntimeException("Product not found with id: " + productId);
+        throw new ProductNotFoundException(productId);
     }
 
     // Review management - now returning DTOs
@@ -179,7 +182,7 @@ public class ProductService {
             Long reviewCount = reviewRepository.countReviewsByProductId(productId);
             return dtoMapper.toProductSummaryDTO(product, avgRating, reviewCount);
         }
-        throw new RuntimeException("Product not found with id: " + productId);
+        throw new ProductNotFoundException(productId);
     }
 
     // Category management - now returning DTOs
@@ -187,13 +190,17 @@ public class ProductService {
         Optional<Product> productOpt = productRepository.findById(productId);
         Optional<Category> categoryOpt = categoryRepository.findByName(categoryName);
 
-        if (productOpt.isPresent() && categoryOpt.isPresent()) {
-            Product product = productOpt.get();
-            product.getCategories().add(categoryOpt.get());
-            Product savedProduct = productRepository.save(product);
-            return dtoMapper.toProductDTO(savedProduct);
+        if (productOpt.isEmpty()) {
+            throw new ProductNotFoundException(productId);
         }
-        throw new RuntimeException("Product or Category not found");
+        if (categoryOpt.isEmpty()) {
+            throw new CategoryNotFoundException(categoryName);
+        }
+
+        Product product = productOpt.get();
+        product.getCategories().add(categoryOpt.get());
+        Product savedProduct = productRepository.save(product);
+        return dtoMapper.toProductDTO(savedProduct);
     }
 
     // Product validation and business logic
@@ -219,7 +226,7 @@ public class ProductService {
             Product savedProduct = productRepository.save(product);
             return dtoMapper.toProductDTO(savedProduct);
         }
-        throw new RuntimeException("Product not found with id: " + id);
+        throw new ProductNotFoundException(id);
     }
 
     // Product validation - now using DTO

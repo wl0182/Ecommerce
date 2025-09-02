@@ -5,6 +5,11 @@ import com.wassimlagnaoui.Ecommerce.Domain.Order;
 import com.wassimlagnaoui.Ecommerce.Domain.OrderItem;
 import com.wassimlagnaoui.Ecommerce.Domain.Product;
 import com.wassimlagnaoui.Ecommerce.DTO.*;
+import com.wassimlagnaoui.Ecommerce.Exception.CustomerNotFoundException;
+import com.wassimlagnaoui.Ecommerce.Exception.InsufficientStockException;
+import com.wassimlagnaoui.Ecommerce.Exception.InvalidOrderStatusException;
+import com.wassimlagnaoui.Ecommerce.Exception.OrderNotFoundException;
+import com.wassimlagnaoui.Ecommerce.Exception.ProductNotFoundException;
 import com.wassimlagnaoui.Ecommerce.Repository.CustomerRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.OrderItemRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.OrderRepository;
@@ -111,7 +116,7 @@ public class OrderService {
         // Use optimized customer query if available
         Optional<Customer> customerOpt = customerRepository.findById(customerId);
         if (customerOpt.isEmpty()) {
-            throw new RuntimeException("Customer not found with id: " + customerId);
+            throw new CustomerNotFoundException(customerId);
         }
 
         Customer customer = customerOpt.get();
@@ -135,7 +140,7 @@ public class OrderService {
         for (OrderItem item : orderItems) {
             // Validate product availability
             if (!productService.isProductAvailable(getProductIdFromName(item.getProductName()), item.getQuantity())) {
-                throw new RuntimeException("Insufficient stock for product: " + item.getProductName());
+                throw new InsufficientStockException("Insufficient stock for product: " + item.getProductName());
             }
 
             totalAmount += item.getPrice() * item.getQuantity();
@@ -172,7 +177,7 @@ public class OrderService {
             Order savedOrder = orderRepository.save(order);
             return dtoMapper.toOrderDTO(savedOrder);
         }
-        throw new RuntimeException("Order not found with id: " + orderId);
+        throw new OrderNotFoundException(orderId);
     }
 
     public OrderDTO processOrder(Long orderId) {
@@ -214,10 +219,10 @@ public class OrderService {
                 Order savedOrder = orderRepository.save(order);
                 return dtoMapper.toOrderDTO(savedOrder);
             } else {
-                throw new RuntimeException("Cannot cancel order with status: " + order.getStatus());
+                throw new InvalidOrderStatusException(order.getStatus(), "cancel");
             }
         }
-        throw new RuntimeException("Order not found with id: " + orderId);
+        throw new OrderNotFoundException(orderId);
     }
 
     // Order item operations - using optimized queries
@@ -228,7 +233,7 @@ public class OrderService {
 
             // Only add items to pending orders
             if (!"PENDING".equals(order.getStatus())) {
-                throw new RuntimeException("Cannot add items to order with status: " + order.getStatus());
+                throw new InvalidOrderStatusException(order.getStatus(), "add items to");
             }
 
             OrderItem orderItem = dtoMapper.toOrderItemEntity(orderItemDTO);
@@ -241,7 +246,7 @@ public class OrderService {
 
             return dtoMapper.toOrderItemDTO(savedItem);
         }
-        throw new RuntimeException("Order not found with id: " + orderId);
+        throw new OrderNotFoundException(orderId);
     }
 
     // Order calculations - using optimized queries
@@ -270,7 +275,7 @@ public class OrderService {
         if (product.isPresent()) {
             return product.get().getId();
         }
-        throw new RuntimeException("Product not found: " + productName);
+        throw new ProductNotFoundException(productName, true);
     }
 
     // Order validation - using optimized queries
@@ -296,7 +301,7 @@ public class OrderService {
 
             // Only update if order is still pending
             if (!"PENDING".equals(order.getStatus())) {
-                throw new RuntimeException("Cannot update order with status: " + order.getStatus());
+                throw new InvalidOrderStatusException(order.getStatus(), "update");
             }
 
             order.setStatus(updatedOrderDTO.getStatus());
@@ -306,7 +311,7 @@ public class OrderService {
             Order savedOrder = orderRepository.save(order);
             return dtoMapper.toOrderDTO(savedOrder);
         }
-        throw new RuntimeException("Order not found with id: " + id);
+        throw new OrderNotFoundException(id);
     }
 
     // Add new methods to leverage specific repository queries

@@ -4,6 +4,7 @@ import com.wassimlagnaoui.Ecommerce.Domain.Address;
 import com.wassimlagnaoui.Ecommerce.Domain.Customer;
 import com.wassimlagnaoui.Ecommerce.Domain.Order;
 import com.wassimlagnaoui.Ecommerce.DTO.*;
+import com.wassimlagnaoui.Ecommerce.Exception.CustomerNotFoundException;
 import com.wassimlagnaoui.Ecommerce.Repository.AddressRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.CustomerRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.OrderRepository;
@@ -85,7 +86,7 @@ public class CustomerService {
             Address savedAddress = addressRepository.save(address);
             return dtoMapper.toAddressDTO(savedAddress);
         }
-        throw new RuntimeException("Customer not found with id: " + customerId);
+        throw new CustomerNotFoundException(customerId);
     }
 
     // Order management - now returning DTOs
@@ -109,7 +110,7 @@ public class CustomerService {
             Customer savedCustomer = customerRepository.save(customer);
             return dtoMapper.toCustomerDTO(savedCustomer);
         }
-        throw new RuntimeException("Customer not found with id: " + customerId);
+        throw new CustomerNotFoundException(customerId);
     }
 
     // Update customer information - now using DTOs
@@ -125,7 +126,7 @@ public class CustomerService {
             Customer savedCustomer = customerRepository.save(customer);
             return dtoMapper.toCustomerDTO(savedCustomer);
         }
-        throw new RuntimeException("Customer not found with id: " + id);
+        throw new CustomerNotFoundException(id);
     }
 
     // Validate customer before operations - now using DTO
