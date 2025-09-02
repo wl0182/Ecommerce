@@ -42,8 +42,8 @@ public class CustomerController {
     })
     @GetMapping("/{id}")
     public ResponseEntity<CustomerDTO> getCustomerById(
-            @Parameter(description = "Customer ID", example = "1")
-            @PathVariable Long id) {
+            @Parameter(description = "Customer ID", example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable String id) {
         Optional<CustomerDTO> customer = customerService.getCustomerById(id);
         return customer.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -73,7 +73,7 @@ public class CustomerController {
             @ApiResponse(responseCode = "404", description = "Customer not found")
     })
     @PutMapping("/{id}")
-    public ResponseEntity<CustomerDTO> updateCustomer(@PathVariable Long id, @RequestBody CustomerDTO customer) {
+    public ResponseEntity<CustomerDTO> updateCustomer(@PathVariable String id, @RequestBody CustomerDTO customer) {
         try {
             CustomerDTO updatedCustomer = customerService.updateCustomer(id, customer);
             return ResponseEntity.ok(updatedCustomer);
@@ -88,7 +88,7 @@ public class CustomerController {
             @ApiResponse(responseCode = "404", description = "Customer not found")
     })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCustomer(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteCustomer(@PathVariable String id) {
         try {
             customerService.deleteCustomer(id);
             return ResponseEntity.noContent().build();
@@ -150,7 +150,7 @@ public class CustomerController {
             @ApiResponse(responseCode = "404", description = "Customer not found")
     })
     @GetMapping("/{customerId}/addresses")
-    public ResponseEntity<List<AddressDTO>> getCustomerAddresses(@PathVariable Long customerId) {
+    public ResponseEntity<List<AddressDTO>> getCustomerAddresses(@PathVariable String customerId) {
         try {
             List<AddressDTO> addresses = customerService.getCustomerAddresses(customerId);
             return ResponseEntity.ok(addresses);
@@ -166,7 +166,7 @@ public class CustomerController {
             @ApiResponse(responseCode = "400", description = "Invalid address data")
     })
     @PostMapping("/{customerId}/addresses")
-    public ResponseEntity<AddressDTO> addAddressToCustomer(@PathVariable Long customerId, @RequestBody AddressDTO address) {
+    public ResponseEntity<AddressDTO> addAddressToCustomer(@PathVariable String customerId, @RequestBody AddressDTO address) {
         try {
             AddressDTO savedAddress = customerService.addAddressToCustomer(customerId, address);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedAddress);
@@ -181,7 +181,7 @@ public class CustomerController {
             @ApiResponse(responseCode = "404", description = "Customer not found")
     })
     @GetMapping("/{customerId}/orders")
-    public ResponseEntity<List<OrderDTO>> getCustomerOrders(@PathVariable Long customerId) {
+    public ResponseEntity<List<OrderDTO>> getCustomerOrders(@PathVariable String customerId) {
         List<OrderDTO> orders = customerService.getCustomerOrders(customerId);
         return ResponseEntity.ok(orders);
     }
@@ -192,7 +192,7 @@ public class CustomerController {
             @ApiResponse(responseCode = "404", description = "Customer or orders not found")
     })
     @GetMapping("/{customerId}/orders/status/{status}")
-    public ResponseEntity<List<OrderDTO>> getCustomerOrdersByStatus(@PathVariable Long customerId, @PathVariable String status) {
+    public ResponseEntity<List<OrderDTO>> getCustomerOrdersByStatus(@PathVariable String customerId, @PathVariable String status) {
         List<OrderDTO> orders = customerService.getCustomerOrdersByStatus(customerId, status);
         return ResponseEntity.ok(orders);
     }
@@ -203,7 +203,7 @@ public class CustomerController {
             @ApiResponse(responseCode = "404", description = "Customer not found")
     })
     @PutMapping("/{customerId}/total-spent")
-    public ResponseEntity<CustomerDTO> updateTotalSpent(@PathVariable Long customerId, @RequestParam Double amount) {
+    public ResponseEntity<CustomerDTO> updateTotalSpent(@PathVariable String customerId, @RequestParam Double amount) {
         try {
             CustomerDTO updatedCustomer = customerService.updateTotalSpent(customerId, amount);
             return ResponseEntity.ok(updatedCustomer);

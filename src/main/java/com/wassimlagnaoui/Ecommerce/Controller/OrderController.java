@@ -42,8 +42,8 @@ public class OrderController {
     })
     @GetMapping("/{id}")
     public ResponseEntity<OrderDTO> getOrderById(
-            @Parameter(description = "Order ID", example = "1")
-            @PathVariable Long id) {
+            @Parameter(description = "Order ID", example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable String id) {
         Optional<OrderDTO> order = orderService.getOrderById(id);
         return order.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -71,7 +71,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @PutMapping("/{id}")
-    public ResponseEntity<OrderDTO> updateOrder(@PathVariable Long id, @RequestBody OrderDTO order) {
+    public ResponseEntity<OrderDTO> updateOrder(@PathVariable String id, @RequestBody OrderDTO order) {
         try {
             OrderDTO updatedOrder = orderService.updateOrder(id, order);
             return ResponseEntity.ok(updatedOrder);
@@ -86,7 +86,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteOrder(@PathVariable String id) {
         try {
             orderService.deleteOrder(id);
             return ResponseEntity.noContent().build();
@@ -113,7 +113,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "No orders found for this customer")
     })
     @GetMapping("/customer/{customerId}")
-    public ResponseEntity<List<OrderDTO>> getOrdersByCustomer(@PathVariable Long customerId) {
+    public ResponseEntity<List<OrderDTO>> getOrdersByCustomer(@PathVariable String customerId) {
         List<OrderDTO> orders = orderService.getOrdersByCustomer(customerId);
         return ResponseEntity.ok(orders);
     }
@@ -136,7 +136,7 @@ public class OrderController {
     })
     @GetMapping("/customer/{customerId}/status/{status}")
     public ResponseEntity<List<OrderDTO>> getCustomerOrdersByStatus(
-            @PathVariable Long customerId,
+            @PathVariable String customerId,
             @PathVariable String status) {
         List<OrderDTO> orders = orderService.getCustomerOrdersByStatus(customerId, status);
         return ResponseEntity.ok(orders);
@@ -148,7 +148,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @GetMapping("/{orderId}/items")
-    public ResponseEntity<List<OrderItemDTO>> getOrderItems(@PathVariable Long orderId) {
+    public ResponseEntity<List<OrderItemDTO>> getOrderItems(@PathVariable String orderId) {
         List<OrderItemDTO> orderItems = orderService.getOrderItems(orderId);
         return ResponseEntity.ok(orderItems);
     }
@@ -171,7 +171,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @PostMapping("/{orderId}/items")
-    public ResponseEntity<OrderItemDTO> addOrderItem(@PathVariable Long orderId, @RequestBody OrderItemDTO orderItem) {
+    public ResponseEntity<OrderItemDTO> addOrderItem(@PathVariable String orderId, @RequestBody OrderItemDTO orderItem) {
         try {
             OrderItemDTO savedItem = orderService.addOrderItem(orderId, orderItem);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedItem);
@@ -186,7 +186,7 @@ public class OrderController {
             @ApiResponse(responseCode = "400", description = "Invalid order or item data")
     })
     @PostMapping("/create")
-    public ResponseEntity<OrderDTO> createOrder(@RequestParam Long customerId, @RequestBody List<OrderItemDTO> orderItems) {
+    public ResponseEntity<OrderDTO> createOrder(@RequestParam String customerId, @RequestBody List<OrderItemDTO> orderItems) {
         try {
             OrderDTO createdOrder = orderService.createOrder(customerId, orderItems);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdOrder);
@@ -201,7 +201,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @PutMapping("/{orderId}/status")
-    public ResponseEntity<OrderDTO> updateOrderStatus(@PathVariable Long orderId, @RequestParam String status) {
+    public ResponseEntity<OrderDTO> updateOrderStatus(@PathVariable String orderId, @RequestParam String status) {
         try {
             OrderDTO updatedOrder = orderService.updateOrderStatus(orderId, status);
             return ResponseEntity.ok(updatedOrder);
@@ -216,7 +216,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @PutMapping("/{orderId}/process")
-    public ResponseEntity<OrderDTO> processOrder(@PathVariable Long orderId) {
+    public ResponseEntity<OrderDTO> processOrder(@PathVariable String orderId) {
         try {
             OrderDTO processedOrder = orderService.processOrder(orderId);
             return ResponseEntity.ok(processedOrder);
@@ -231,7 +231,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @PutMapping("/{orderId}/ship")
-    public ResponseEntity<OrderDTO> shipOrder(@PathVariable Long orderId) {
+    public ResponseEntity<OrderDTO> shipOrder(@PathVariable String orderId) {
         try {
             OrderDTO shippedOrder = orderService.shipOrder(orderId);
             return ResponseEntity.ok(shippedOrder);
@@ -246,7 +246,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @PutMapping("/{orderId}/deliver")
-    public ResponseEntity<OrderDTO> deliverOrder(@PathVariable Long orderId) {
+    public ResponseEntity<OrderDTO> deliverOrder(@PathVariable String orderId) {
         try {
             OrderDTO deliveredOrder = orderService.deliverOrder(orderId);
             return ResponseEntity.ok(deliveredOrder);
@@ -261,7 +261,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @PutMapping("/{orderId}/cancel")
-    public ResponseEntity<OrderDTO> cancelOrder(@PathVariable Long orderId) {
+    public ResponseEntity<OrderDTO> cancelOrder(@PathVariable String orderId) {
         try {
             OrderDTO cancelledOrder = orderService.cancelOrder(orderId);
             return ResponseEntity.ok(cancelledOrder);
@@ -276,7 +276,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @GetMapping("/{orderId}/total")
-    public ResponseEntity<Double> calculateOrderTotal(@PathVariable Long orderId) {
+    public ResponseEntity<Double> calculateOrderTotal(@PathVariable String orderId) {
         Double total = orderService.calculateOrderTotal(orderId);
         return ResponseEntity.ok(total);
     }
@@ -287,7 +287,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @GetMapping("/{orderId}/item-count")
-    public ResponseEntity<Integer> getOrderItemCount(@PathVariable Long orderId) {
+    public ResponseEntity<Integer> getOrderItemCount(@PathVariable String orderId) {
         Integer itemCount = orderService.getOrderItemCount(orderId);
         return ResponseEntity.ok(itemCount);
     }
@@ -298,7 +298,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @GetMapping("/{orderId}/can-process")
-    public ResponseEntity<Boolean> canProcessOrder(@PathVariable Long orderId) {
+    public ResponseEntity<Boolean> canProcessOrder(@PathVariable String orderId) {
         boolean canProcess = orderService.canProcessOrder(orderId);
         return ResponseEntity.ok(canProcess);
     }
@@ -309,7 +309,7 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @GetMapping("/{orderId}/can-cancel")
-    public ResponseEntity<Boolean> canCancelOrder(@PathVariable Long orderId) {
+    public ResponseEntity<Boolean> canCancelOrder(@PathVariable String orderId) {
         boolean canCancel = orderService.canCancelOrder(orderId);
         return ResponseEntity.ok(canCancel);
     }

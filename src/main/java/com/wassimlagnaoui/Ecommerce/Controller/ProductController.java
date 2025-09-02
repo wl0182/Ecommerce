@@ -61,8 +61,8 @@ public class ProductController {
     })
     @GetMapping("/{id}")
     public ResponseEntity<ProductDTO> getProductById(
-            @Parameter(description = "Product ID", example = "1")
-            @PathVariable Long id) {
+            @Parameter(description = "Product ID", example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable String id) {
         Optional<ProductDTO> product = productService.getProductById(id);
         return product.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -75,8 +75,8 @@ public class ProductController {
     })
     @GetMapping("/{id}/summary")
     public ResponseEntity<ProductSummaryDTO> getProductSummary(
-            @Parameter(description = "Product ID", example = "1")
-            @PathVariable Long id) {
+            @Parameter(description = "Product ID", example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable String id) {
         try {
             ProductSummaryDTO productSummary = productService.getProductSummary(id);
             return ResponseEntity.ok(productSummary);
@@ -113,8 +113,8 @@ public class ProductController {
     })
     @PutMapping("/{id}")
     public ResponseEntity<ProductDTO> updateProduct(
-            @Parameter(description = "Product ID", example = "1")
-            @PathVariable Long id,
+            @Parameter(description = "Product ID", example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable String id,
             @Parameter(description = "Updated product details")
             @RequestBody ProductDTO product) {
         try {
@@ -132,8 +132,8 @@ public class ProductController {
     })
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProduct(
-            @Parameter(description = "Product ID", example = "1")
-            @PathVariable Long id) {
+            @Parameter(description = "Product ID", example = "550e8400-e29b-41d4-a716-446655440000")
+            @PathVariable String id) {
         try {
             productService.deleteProduct(id);
             return ResponseEntity.noContent().build();
@@ -203,7 +203,7 @@ public class ProductController {
 
     // Stock operations - now using DTOs
     @PutMapping("/{productId}/stock")
-    public ResponseEntity<ProductDTO> updateStock(@PathVariable Long productId, @RequestParam Integer newStock) {
+    public ResponseEntity<ProductDTO> updateStock(@PathVariable String productId, @RequestParam Integer newStock) {
         try {
             ProductDTO updatedProduct = productService.updateStock(productId, newStock);
             return ResponseEntity.ok(updatedProduct);
@@ -213,7 +213,7 @@ public class ProductController {
     }
 
     @PutMapping("/{productId}/reduce-stock")
-    public ResponseEntity<ProductDTO> reduceStock(@PathVariable Long productId, @RequestParam Integer quantity) {
+    public ResponseEntity<ProductDTO> reduceStock(@PathVariable String productId, @RequestParam Integer quantity) {
         try {
             ProductDTO updatedProduct = productService.reduceStock(productId, quantity);
             return ResponseEntity.ok(updatedProduct);
@@ -223,7 +223,7 @@ public class ProductController {
     }
 
     @PutMapping("/{productId}/increase-sales")
-    public ResponseEntity<ProductDTO> increaseSalesCount(@PathVariable Long productId, @RequestParam Integer quantity) {
+    public ResponseEntity<ProductDTO> increaseSalesCount(@PathVariable String productId, @RequestParam Integer quantity) {
         try {
             ProductDTO updatedProduct = productService.increaseSalesCount(productId, quantity);
             return ResponseEntity.ok(updatedProduct);
@@ -234,26 +234,26 @@ public class ProductController {
 
     // Review management endpoints - now using DTOs
     @GetMapping("/{productId}/reviews")
-    public ResponseEntity<List<ReviewDTO>> getProductReviews(@PathVariable Long productId) {
+    public ResponseEntity<List<ReviewDTO>> getProductReviews(@PathVariable String productId) {
         List<ReviewDTO> reviews = productService.getProductReviews(productId);
         return ResponseEntity.ok(reviews);
     }
 
     @GetMapping("/{productId}/average-rating")
-    public ResponseEntity<Double> getProductAverageRating(@PathVariable Long productId) {
+    public ResponseEntity<Double> getProductAverageRating(@PathVariable String productId) {
         Double averageRating = productService.getProductAverageRating(productId);
         return ResponseEntity.ok(averageRating);
     }
 
     @GetMapping("/{productId}/review-count")
-    public ResponseEntity<Long> getProductReviewCount(@PathVariable Long productId) {
+    public ResponseEntity<Long> getProductReviewCount(@PathVariable String productId) {
         Long reviewCount = productService.getProductReviewCount(productId);
         return ResponseEntity.ok(reviewCount);
     }
 
     @GetMapping("/{productId}/reviews/rating/{minRating}")
     public ResponseEntity<List<ReviewDTO>> getProductReviewsByRating(
-            @PathVariable Long productId,
+            @PathVariable String productId,
             @PathVariable Integer minRating) {
         List<ReviewDTO> reviews = productService.getProductReviewsByRating(productId, minRating);
         return ResponseEntity.ok(reviews);
@@ -262,7 +262,7 @@ public class ProductController {
     // Category management - now using DTOs
     @PutMapping("/{productId}/categories/{categoryName}")
     public ResponseEntity<ProductDTO> addCategoryToProduct(
-            @PathVariable Long productId,
+            @PathVariable String productId,
             @PathVariable String categoryName) {
         try {
             ProductDTO updatedProduct = productService.addCategoryToProduct(productId, categoryName);
@@ -281,7 +281,7 @@ public class ProductController {
 
     @GetMapping("/{productId}/availability")
     public ResponseEntity<Boolean> checkProductAvailability(
-            @PathVariable Long productId,
+            @PathVariable String productId,
             @RequestParam Integer requestedQuantity) {
         boolean available = productService.isProductAvailable(productId, requestedQuantity);
         return ResponseEntity.ok(available);
