@@ -9,16 +9,16 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface OrderRepository extends JpaRepository<Order, Long> {
-    List<Order> findByCustomerId(Long customerId);
+public interface OrderRepository extends JpaRepository<Order, String> {
+    List<Order> findByCustomerId(String customerId);
     Optional<Order> findByOrderNumber(String orderNumber);
     List<Order> findByStatus(String status);
-    List<Order> findByCustomerIdAndStatus(Long customerId, String status);
+    List<Order> findByCustomerIdAndStatus(String customerId, String status);
 
     // Account for lazy loading of order items and avoid N+1 problem
 
     @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderItems WHERE o.id = ?1")
-    Optional<Order> findByIdWithOrderItems(Long id);
+    Optional<Order> findByIdWithOrderItems(String id);
 
     @Query("SELECT o FROM Order o LEFT JOIN FETCH o.orderItems")
     List<Order> findAllWithOrderItems();
@@ -29,26 +29,26 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByTotalAmountGreaterThan(Double amount);
 
     @Query("SELECT o FROM Order o WHERE o.status = 'COMPLETED' AND o.customer.id = ?1")
-    List<Order> findCompletedOrdersByCustomerId(Long customerId);
+    List<Order> findCompletedOrdersByCustomerId(String customerId);
 
     @Query("SELECT o FROM Order o WHERE o.status = 'PENDING' AND o.customer.id = ?1")
-    List<Order> findPendingOrdersByCustomerId(Long customerId);
+    List<Order> findPendingOrdersByCustomerId(String customerId);
 
     @Query("SELECT o FROM Order o WHERE o.status = 'CANCELLED' AND o.customer.id = ?1")
-    List<Order> findCancelledOrdersByCustomerId(Long customerId);
+    List<Order> findCancelledOrdersByCustomerId(String customerId);
 
     @Query("SELECT o FROM Order o WHERE o.status = 'SHIPPED' AND o.customer.id = ?1")
-    List<Order> findShippedOrdersByCustomerId(Long customerId);
+    List<Order> findShippedOrdersByCustomerId(String customerId);
 
     @Query("SELECT o FROM Order o WHERE o.status = 'DELIVERED' AND o.customer.id = ?1")
-    List<Order> findDeliveredOrdersByCustomerId(Long customerId);
+    List<Order> findDeliveredOrdersByCustomerId(String customerId);
 
 
     @Query("SELECT o FROM Order o WHERE o.status = 'RETURNED' AND o.customer.id = ?1")
-    List<Order> findReturnedOrdersByCustomerId(Long customerId);
+    List<Order> findReturnedOrdersByCustomerId(String customerId);
 
     @Query("SELECT o FROM Order o WHERE o.status = 'REFUNDED' AND o.customer.id = ?1")
-    List<Order> findRefundedOrdersByCustomerId(Long customerId);
+    List<Order> findRefundedOrdersByCustomerId(String customerId);
 
 
 

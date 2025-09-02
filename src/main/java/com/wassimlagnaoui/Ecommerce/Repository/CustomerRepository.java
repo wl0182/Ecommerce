@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface CustomerRepository extends JpaRepository<Customer, Long> {
+public interface CustomerRepository extends JpaRepository<Customer, String> {
     Optional<Customer> findByEmail(String email);
     boolean existsByEmail(String email);
     Optional<Customer> findByName(String name);
@@ -20,7 +20,7 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
 
     // Account for lazy loading of orders
     @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.orders WHERE c.id = ?1")
-    Optional<Customer> findByIdWithOrders(Long id);
+    Optional<Customer> findByIdWithOrders(String id);
 
 
 
@@ -28,10 +28,10 @@ public interface CustomerRepository extends JpaRepository<Customer, Long> {
     List<Customer> findAllWithReviews();
 
     @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.reviews WHERE c.id = ?1")
-    Optional<Customer> findByIdWithReviews(Long id);
+    Optional<Customer> findByIdWithReviews(String id);
 
     @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.orders LEFT JOIN FETCH c.addresses LEFT JOIN FETCH c.reviews WHERE c.id = ?1")
-    Optional<Customer> findByIdWithAllDetails(Long id);
+    Optional<Customer> findByIdWithAllDetails(String id);
 
     @Query("SELECT c FROM Customer c LEFT JOIN FETCH c.orders LEFT JOIN FETCH c.addresses LEFT JOIN FETCH c.reviews")
     List<Customer> findAllWithAllDetails();

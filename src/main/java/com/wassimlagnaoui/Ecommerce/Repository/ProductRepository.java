@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface ProductRepository extends JpaRepository<Product, Long> {
+public interface ProductRepository extends JpaRepository<Product, String> {
     Optional<Product> findByName(String name);
     List<Product> findByPriceBetween(Double minPrice, Double maxPrice);
     List<Product> findByStockGreaterThan(Integer stock);
@@ -26,19 +26,19 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     // Account for lazy loading of reviews to avoid N+1 problem
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.reviews WHERE p.id = ?1")
-    Optional<Product> findByIdWithReviews(Long id);
+    Optional<Product> findByIdWithReviews(String id);
 
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.reviews")
     List<Product> findAllWithReviews();
 
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.categories WHERE p.id = ?1")
-    Optional<Product> findByIdWithCategories(Long id);
+    Optional<Product> findByIdWithCategories(String id);
 
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.categories")
     List<Product> findAllWithCategories();
 
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.reviews LEFT JOIN FETCH p.categories WHERE p.id = ?1")
-    Optional<Product> findByIdWithAllDetails(Long id);
+    Optional<Product> findByIdWithAllDetails(String id);
 
     @Query("SELECT p FROM Product p LEFT JOIN FETCH p.reviews LEFT JOIN FETCH p.categories")
     List<Product> findAllWithAllDetails();

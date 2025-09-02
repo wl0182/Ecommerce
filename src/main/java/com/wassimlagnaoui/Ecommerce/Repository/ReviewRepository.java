@@ -9,16 +9,16 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface ReviewRepository extends JpaRepository<Review, Long> {
-    List<Review> findByProductId(Long productId);
-    List<Review> findByCustomerId(Long customerId);
+public interface ReviewRepository extends JpaRepository<Review, String> {
+    List<Review> findByProductId(String productId);
+    List<Review> findByCustomerId(String customerId);
     List<Review> findByRating(Integer rating);
     List<Review> findByRatingGreaterThanEqual(Integer rating);
-    List<Review> findByProductIdAndCustomerId(Long productId, Long customerId);
+    List<Review> findByProductIdAndCustomerId(String productId, String customerId);
 
     @Query("SELECT AVG(r.rating) FROM Review r WHERE r.product.id = :productId")
-    Double findAverageRatingByProductId(@Param("productId") Long productId);
+    Double findAverageRatingByProductId(@Param("productId") String productId);
 
     @Query("SELECT COUNT(r) FROM Review r WHERE r.product.id = :productId")
-    Long countReviewsByProductId(@Param("productId") Long productId);
+    Long countReviewsByProductId(@Param("productId") String productId);
 }
