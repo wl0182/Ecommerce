@@ -7,8 +7,8 @@ import org.springframework.stereotype.Repository;
 import java.util.List;
 
 @Repository
-public interface AddressRepository extends JpaRepository<Address, Long> {
-    List<Address> findByCustomerId(Long customerId);
+public interface AddressRepository extends JpaRepository<Address, String> {
+    List<Address> findByCustomerId(String customerId);
     List<Address> findByCity(String city);
     List<Address> findByState(String state);
     List<Address> findByCountry(String country);

@@ -44,7 +44,7 @@ public class ProductService {
         return products.map(dtoMapper::toProductDTO);
     }
 
-    public Optional<ProductDTO> getProductById(Long id) {
+    public Optional<ProductDTO> getProductById(String id) {
         Optional<Product> product = productRepository.findById(id);
         return product.map(dtoMapper::toProductDTO);
     }
@@ -55,7 +55,7 @@ public class ProductService {
         return dtoMapper.toProductDTO(savedProduct);
     }
 
-    public void deleteProduct(Long id) {
+    public void deleteProduct(String id) {
         productRepository.deleteById(id);
     }
 
@@ -114,7 +114,7 @@ public class ProductService {
     }
 
     // Stock operations - now returning DTOs
-    public ProductDTO updateStock(Long productId, Integer newStock) {
+    public ProductDTO updateStock(String productId, Integer newStock) {
         Optional<Product> productOpt = productRepository.findById(productId);
         if (productOpt.isPresent()) {
             Product product = productOpt.get();
@@ -125,7 +125,7 @@ public class ProductService {
         throw new ProductNotFoundException(productId);
     }
 
-    public ProductDTO reduceStock(Long productId, Integer quantity) {
+    public ProductDTO reduceStock(String productId, Integer quantity) {
         Optional<Product> productOpt = productRepository.findById(productId);
         if (productOpt.isPresent()) {
             Product product = productOpt.get();
@@ -139,7 +139,7 @@ public class ProductService {
         throw new ProductNotFoundException(productId);
     }
 
-    public ProductDTO increaseSalesCount(Long productId, Integer quantity) {
+    public ProductDTO increaseSalesCount(String productId, Integer quantity) {
         Optional<Product> productOpt = productRepository.findById(productId);
         if (productOpt.isPresent()) {
             Product product = productOpt.get();
@@ -152,20 +152,20 @@ public class ProductService {
     }
 
     // Review management - now returning DTOs
-    public List<ReviewDTO> getProductReviews(Long productId) {
+    public List<ReviewDTO> getProductReviews(String productId) {
         List<Review> reviews = reviewRepository.findByProductId(productId);
         return dtoMapper.toReviewDTOList(reviews);
     }
 
-    public Double getProductAverageRating(Long productId) {
+    public Double getProductAverageRating(String productId) {
         return reviewRepository.findAverageRatingByProductId(productId);
     }
 
-    public Long getProductReviewCount(Long productId) {
+    public Long getProductReviewCount(String productId) {
         return reviewRepository.countReviewsByProductId(productId);
     }
 
-    public List<ReviewDTO> getProductReviewsByRating(Long productId, Integer minRating) {
+    public List<ReviewDTO> getProductReviewsByRating(String productId, Integer minRating) {
         List<Review> productReviews = reviewRepository.findByProductId(productId);
         List<Review> filteredReviews = productReviews.stream()
                 .filter(review -> review.getRating() >= minRating)
@@ -174,7 +174,7 @@ public class ProductService {
     }
 
     // Get product with rating summary
-    public ProductSummaryDTO getProductSummary(Long productId) {
+    public ProductSummaryDTO getProductSummary(String productId) {
         Optional<Product> productOpt = productRepository.findById(productId);
         if (productOpt.isPresent()) {
             Product product = productOpt.get();
@@ -186,7 +186,7 @@ public class ProductService {
     }
 
     // Category management - now returning DTOs
-    public ProductDTO addCategoryToProduct(Long productId, String categoryName) {
+    public ProductDTO addCategoryToProduct(String productId, String categoryName) {
         Optional<Product> productOpt = productRepository.findById(productId);
         Optional<Category> categoryOpt = categoryRepository.findByName(categoryName);
 
@@ -208,12 +208,12 @@ public class ProductService {
         return productRepository.existsByName(name);
     }
 
-    public boolean isProductAvailable(Long productId, Integer requestedQuantity) {
-        Optional<Product> product = productRepository.findById(productId);
-        return product.isPresent() && product.get().getStock() >= requestedQuantity;
+    public boolean isProductAvailable(String productId, Integer requestedQuantity) {
+        Optional<Product> productOpt = productRepository.findById(productId);
+        return productOpt.isPresent() && productOpt.get().getStock() >= requestedQuantity;
     }
 
-    public ProductDTO updateProduct(Long id, ProductDTO updatedProductDTO) {
+    public ProductDTO updateProduct(String id, ProductDTO updatedProductDTO) {
         Optional<Product> productOpt = productRepository.findById(id);
         if (productOpt.isPresent()) {
             Product product = productOpt.get();
@@ -222,6 +222,9 @@ public class ProductService {
             product.setPrice(updatedProductDTO.getPrice());
             if (updatedProductDTO.getStock() != null) {
                 product.setStock(updatedProductDTO.getStock());
+            }
+            if (updatedProductDTO.getSalesCount() != null) {
+                product.setSalesCount(updatedProductDTO.getSalesCount());
             }
             Product savedProduct = productRepository.save(product);
             return dtoMapper.toProductDTO(savedProduct);

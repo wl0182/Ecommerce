@@ -35,7 +35,7 @@ public class CustomerService {
         return dtoMapper.toCustomerDTOList(customers);
     }
 
-    public Optional<CustomerDTO> getCustomerById(Long id) {
+    public Optional<CustomerDTO> getCustomerById(String id) {
         Optional<Customer> customer = customerRepository.findById(id);
         return customer.map(dtoMapper::toCustomerDTO);
     }
@@ -46,7 +46,7 @@ public class CustomerService {
         return dtoMapper.toCustomerDTO(savedCustomer);
     }
 
-    public void deleteCustomer(Long id) {
+    public void deleteCustomer(String id) {
         customerRepository.deleteById(id);
     }
 
@@ -73,12 +73,12 @@ public class CustomerService {
     }
 
     // Address management - now returning DTOs
-    public List<AddressDTO> getCustomerAddresses(Long customerId) {
+    public List<AddressDTO> getCustomerAddresses(String customerId) {
         List<Address> addresses = addressRepository.findByCustomerId(customerId);
         return dtoMapper.toAddressDTOList(addresses);
     }
 
-    public AddressDTO addAddressToCustomer(Long customerId, AddressDTO addressDTO) {
+    public AddressDTO addAddressToCustomer(String customerId, AddressDTO addressDTO) {
         Optional<Customer> customer = customerRepository.findById(customerId);
         if (customer.isPresent()) {
             Address address = dtoMapper.toAddressEntity(addressDTO);
@@ -90,18 +90,18 @@ public class CustomerService {
     }
 
     // Order management - now returning DTOs
-    public List<OrderDTO> getCustomerOrders(Long customerId) {
+    public List<OrderDTO> getCustomerOrders(String customerId) {
         List<Order> orders = orderRepository.findByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
-    public List<OrderDTO> getCustomerOrdersByStatus(Long customerId, String status) {
+    public List<OrderDTO> getCustomerOrdersByStatus(String customerId, String status) {
         List<Order> orders = orderRepository.findByCustomerIdAndStatus(customerId, status);
         return dtoMapper.toOrderDTOList(orders);
     }
 
     // Update customer total spent - internal method, entity manipulation
-    public CustomerDTO updateTotalSpent(Long customerId, Double amount) {
+    public CustomerDTO updateTotalSpent(String customerId, Double amount) {
         Optional<Customer> customerOpt = customerRepository.findById(customerId);
         if (customerOpt.isPresent()) {
             Customer customer = customerOpt.get();
@@ -114,7 +114,7 @@ public class CustomerService {
     }
 
     // Update customer information - now using DTOs
-    public CustomerDTO updateCustomer(Long id, CustomerDTO updatedCustomerDTO) {
+    public CustomerDTO updateCustomer(String id, CustomerDTO updatedCustomerDTO) {
         Optional<Customer> customerOpt = customerRepository.findById(id);
         if (customerOpt.isPresent()) {
             Customer customer = customerOpt.get();
