@@ -16,7 +16,7 @@ import java.util.List;
 @Table(name = "customers")
 public class Customer {
     @Id @GeneratedValue(strategy = GenerationType.UUID)
-    private Long id;
+    private String id;
 
 
     private String name;

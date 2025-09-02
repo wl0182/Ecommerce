@@ -15,7 +15,7 @@ import java.util.List;
 @Table(name = "orders")
 public class Order {
     @Id @GeneratedValue(strategy = jakarta.persistence.GenerationType.UUID)
-    private Long id;
+    private String id;
 
     private String orderNumber;
     private String status;
@@ -27,7 +27,6 @@ public class Order {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<OrderItem> orderItems;
-
 
 
 

@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @Table( name = "order_items")
 public class OrderItem {
     @Id @GeneratedValue(strategy = jakarta.persistence.GenerationType.UUID)
-    private Long id;
+    private String id;
     private String productName;
     private Integer quantity;
     private Double price;

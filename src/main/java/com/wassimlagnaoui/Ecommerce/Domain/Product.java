@@ -15,8 +15,8 @@ import java.util.Set;
 @Table(name = "products")
 public class Product {
     @Id
-    @GeneratedValue(strategy = jakarta.persistence.GenerationType.UUID)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private String id;
     private String name;
     private String description;
     private Double price;

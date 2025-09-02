@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 @Table(name = "addresses")
 public class Address {
     @Id @GeneratedValue(strategy = jakarta.persistence.GenerationType.UUID)
-    private Long id;
+    private String id;
     private String street;
     private String city;
     private String state;
