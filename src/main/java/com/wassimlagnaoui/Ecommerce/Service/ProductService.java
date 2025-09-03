@@ -10,6 +10,7 @@ import com.wassimlagnaoui.Ecommerce.Exception.ProductNotFoundException;
 import com.wassimlagnaoui.Ecommerce.Repository.CategoryRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.ProductRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.ReviewRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -49,6 +50,18 @@ public class ProductService {
         return product.map(dtoMapper::toProductDTO);
     }
 
+    // Updated to accept Request DTOs with built-in validation
+    public ProductDTO saveProduct(ProductCreateRequest productRequest) {
+        // Validation is now handled in service layer
+        if (!validateProduct(productRequest)) {
+            throw new IllegalArgumentException("Invalid product data");
+        }
+        Product product = dtoMapper.toProductEntity(productRequest);
+        Product savedProduct = productRepository.save(product);
+        return dtoMapper.toProductDTO(savedProduct);
+    }
+
+    // Keep the old method for backward compatibility
     public ProductDTO saveProduct(ProductDTO productDTO) {
         Product product = dtoMapper.toProductEntity(productDTO);
         Product savedProduct = productRepository.save(product);
@@ -213,6 +226,47 @@ public class ProductService {
         return productOpt.isPresent() && productOpt.get().getStock() >= requestedQuantity;
     }
 
+    // Update product - updated to accept Request DTOs with validation
+    public ProductDTO updateProduct(String id, ProductUpdateRequest productRequest) {
+        // Validation for update request
+        if (productRequest.getName() == null || productRequest.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Product name cannot be empty");
+        }
+        if (productRequest.getDescription() == null || productRequest.getDescription().trim().isEmpty()) {
+            throw new IllegalArgumentException("Product description cannot be empty");
+        }
+        if (productRequest.getPrice() == null || productRequest.getPrice() <= 0) {
+            throw new IllegalArgumentException("Product price must be positive");
+        }
+        if (productRequest.getStock() != null && productRequest.getStock() < 0) {
+            throw new IllegalArgumentException("Product stock cannot be negative");
+        }
+
+        Optional<Product> productOpt = productRepository.findById(id);
+        if (productOpt.isPresent()) {
+            Product product = productOpt.get();
+
+            // Check if name is already taken by another product
+            if (!product.getName().equals(productRequest.getName()) && existsByName(productRequest.getName())) {
+                throw new IllegalArgumentException("Product name already exists");
+            }
+
+            product.setName(productRequest.getName());
+            product.setDescription(productRequest.getDescription());
+            product.setPrice(productRequest.getPrice());
+            if (productRequest.getStock() != null) {
+                product.setStock(productRequest.getStock());
+            }
+            if (productRequest.getSalesCount() != null) {
+                product.setSalesCount(productRequest.getSalesCount());
+            }
+            Product savedProduct = productRepository.save(product);
+            return dtoMapper.toProductDTO(savedProduct);
+        }
+        throw new ProductNotFoundException(id);
+    }
+
+    // Keep the old method for backward compatibility
     public ProductDTO updateProduct(String id, ProductDTO updatedProductDTO) {
         Optional<Product> productOpt = productRepository.findById(id);
         if (productOpt.isPresent()) {
@@ -232,8 +286,22 @@ public class ProductService {
         throw new ProductNotFoundException(id);
     }
 
-    // Product validation - now using DTO
-    public boolean validateProduct(ProductDTO productDTO) {
+    // Product validation - updated to accept Request DTOs
+    public boolean validateProduct(@Valid ProductValidationRequest productRequest) {
+        if (productRequest.getName() == null || productRequest.getName().trim().isEmpty()) {
+            return false;
+        }
+        if (productRequest.getPrice() == null || productRequest.getPrice() <= 0) {
+            return false;
+        }
+        if (productRequest.getStock() == null || productRequest.getStock() < 0) {
+            return false;
+        }
+        return !existsByName(productRequest.getName());
+    }
+
+    // Keep the old method for backward compatibility
+    public boolean validateProduct(ProductCreateRequest productDTO) {
         if (productDTO.getName() == null || productDTO.getName().trim().isEmpty()) {
             return false;
         }
