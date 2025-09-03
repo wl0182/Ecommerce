@@ -225,4 +225,87 @@ public class DTOMapper {
     public List<CategoryDTO> toCategoryDTOList(List<Category> categories) {
         return categories.stream().map(this::toCategoryDTO).collect(Collectors.toList());
     }
+
+    // Customer Request DTO mappings
+    public Customer toCustomerEntity(CustomerCreateRequest request) {
+        if (request == null) return null;
+        Customer customer = new Customer();
+        customer.setName(request.getName());
+        customer.setEmail(request.getEmail());
+        customer.setTotalSpent(0.0); // Initialize to 0 for new customers
+        return customer;
+    }
+
+    public Customer toCustomerEntity(CustomerUpdateRequest request) {
+        if (request == null) return null;
+        Customer customer = new Customer();
+        customer.setName(request.getName());
+        customer.setEmail(request.getEmail());
+        customer.setTotalSpent(request.getTotalSpent());
+        return customer;
+    }
+
+    public CustomerDTO customerRequestToDTO(CustomerValidationRequest request) {
+        if (request == null) return null;
+        return new CustomerDTO(null, request.getName(), request.getEmail(), null);
+    }
+
+    // Product Request DTO mappings
+    public Product toProductEntity(ProductCreateRequest request) {
+        if (request == null) return null;
+        Product product = new Product();
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setStock(request.getStock());
+        product.setSalesCount(0); // Initialize to 0 for new products
+        return product;
+    }
+
+    public Product toProductEntity(ProductUpdateRequest request) {
+        if (request == null) return null;
+        Product product = new Product();
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setPrice(request.getPrice());
+        product.setStock(request.getStock());
+        product.setSalesCount(request.getSalesCount());
+        return product;
+    }
+
+    public ProductDTO productRequestToDTO(ProductValidationRequest request) {
+        if (request == null) return null;
+        return new ProductDTO(null, request.getName(), request.getDescription(),
+                             request.getPrice(), request.getStock(), null);
+    }
+
+    // Order Request DTO mappings
+    public Order toOrderEntity(OrderCreateRequest request) {
+        if (request == null) return null;
+        Order order = new Order();
+        // Customer will be set in the service layer
+        // Order items will be converted separately
+        return order;
+    }
+
+    public OrderItem toOrderItemEntity(OrderItemCreateRequest request) {
+        if (request == null) return null;
+        OrderItem orderItem = new OrderItem();
+        orderItem.setProductName(request.getProductName());
+        orderItem.setQuantity(request.getQuantity());
+        orderItem.setPrice(request.getPrice());
+        return orderItem;
+    }
+
+    // Address Request DTO mappings
+    public Address toAddressEntity(AddressCreateRequest request) {
+        if (request == null) return null;
+        Address address = new Address();
+        address.setStreet(request.getStreet());
+        address.setCity(request.getCity());
+        address.setState(request.getState());
+        address.setCountry(request.getCountry());
+        address.setZipCode(request.getZipCode());
+        return address;
+    }
 }
