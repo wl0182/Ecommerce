@@ -20,7 +20,15 @@ public class Customer {
 
 
     private String name;
+    @Column(unique = true)
     private String email;
+
+    private String password;
+
+    @Enumerated(EnumType.STRING)
+    private Role role = Role.CUSTOMER;
+
+    private Boolean enabled = true;
 
     private Double totalSpent;
 
