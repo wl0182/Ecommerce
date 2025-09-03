@@ -110,7 +110,43 @@ public class OrderService {
         return dtoMapper.toOrderItemDTOList(orderItems);
     }
 
-    // Order creation and processing - now using optimized queries
+    // Order creation and processing - updated to accept Request DTOs with validation
+    @Transactional
+    public OrderDTO createOrder(OrderCreateRequest orderRequest) {
+        // Validation is now handled in service layer
+        if (orderRequest.getCustomerId() == null || orderRequest.getCustomerId().trim().isEmpty()) {
+            throw new IllegalArgumentException("Customer ID is required");
+        }
+        if (orderRequest.getOrderItems() == null || orderRequest.getOrderItems().isEmpty()) {
+            throw new IllegalArgumentException("Order must contain at least one item");
+        }
+
+        // Validate each order item
+        for (OrderItemCreateRequest item : orderRequest.getOrderItems()) {
+            if (item.getProductName() == null || item.getProductName().trim().isEmpty()) {
+                throw new IllegalArgumentException("Product name is required for all order items");
+            }
+            if (item.getQuantity() == null || item.getQuantity() <= 0) {
+                throw new IllegalArgumentException("Quantity must be positive for all order items");
+            }
+            if (item.getPrice() == null || item.getPrice() <= 0) {
+                throw new IllegalArgumentException("Price must be positive for all order items");
+            }
+        }
+
+        String customerId = orderRequest.getCustomerId();
+        List<OrderItemCreateRequest> orderItemRequests = orderRequest.getOrderItems();
+
+        // Convert OrderItemCreateRequest to OrderItemDTO for internal processing
+        List<OrderItemDTO> orderItemDTOs = orderItemRequests.stream()
+            .map(request -> new OrderItemDTO(null, request.getProductName(),
+                                           request.getQuantity(), request.getPrice(), null))
+            .toList();
+
+        return createOrder(customerId, orderItemDTOs);
+    }
+
+    // Keep the existing createOrder method for backward compatibility
     @Transactional
     public OrderDTO createOrder(String customerId, List<OrderItemDTO> orderItemDTOs) {
         // Use optimized customer query if available
@@ -225,7 +261,26 @@ public class OrderService {
         throw new OrderNotFoundException(orderId);
     }
 
-    // Order item operations - using optimized queries
+    // Order item operations - updated to accept Request DTOs with validation
+    public OrderItemDTO addOrderItem(String orderId, OrderItemCreateRequest orderItemRequest) {
+        // Validation for order item
+        if (orderItemRequest.getProductName() == null || orderItemRequest.getProductName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Product name is required");
+        }
+        if (orderItemRequest.getQuantity() == null || orderItemRequest.getQuantity() <= 0) {
+            throw new IllegalArgumentException("Quantity must be positive");
+        }
+        if (orderItemRequest.getPrice() == null || orderItemRequest.getPrice() <= 0) {
+            throw new IllegalArgumentException("Price must be positive");
+        }
+
+        // Convert to OrderItemDTO for internal processing
+        OrderItemDTO orderItemDTO = new OrderItemDTO(null, orderItemRequest.getProductName(),
+                                                    orderItemRequest.getQuantity(), orderItemRequest.getPrice(), orderId);
+        return addOrderItem(orderId, orderItemDTO);
+    }
+
+    // Keep the existing method for backward compatibility
     public OrderItemDTO addOrderItem(String orderId, OrderItemDTO orderItemDTO) {
         Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(orderId);
         if (orderOpt.isPresent()) {
@@ -293,7 +348,36 @@ public class OrderService {
         return false;
     }
 
-    // Update order - using optimized queries
+    // Update order - updated to accept Request DTOs with validation
+    public OrderDTO updateOrder(String id, OrderUpdateRequest orderRequest) {
+        // Validation for update request
+        if (orderRequest.getStatus() == null || orderRequest.getStatus().trim().isEmpty()) {
+            throw new IllegalArgumentException("Order status cannot be empty");
+        }
+        if (orderRequest.getTotalAmount() != null && orderRequest.getTotalAmount() < 0) {
+            throw new IllegalArgumentException("Total amount cannot be negative");
+        }
+
+        Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(id);
+        if (orderOpt.isPresent()) {
+            Order order = orderOpt.get();
+
+            // Only update if order is still pending
+            if (!"PENDING".equals(order.getStatus())) {
+                throw new InvalidOrderStatusException(order.getStatus(), "update");
+            }
+
+            order.setStatus(orderRequest.getStatus());
+            if (orderRequest.getTotalAmount() != null) {
+                order.setTotalAmount(orderRequest.getTotalAmount());
+            }
+            Order savedOrder = orderRepository.save(order);
+            return dtoMapper.toOrderDTO(savedOrder);
+        }
+        throw new OrderNotFoundException(id);
+    }
+
+    // Keep the existing method for backward compatibility
     public OrderDTO updateOrder(String id, OrderDTO updatedOrderDTO) {
         Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(id);
         if (orderOpt.isPresent()) {
