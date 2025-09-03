@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Optional;
@@ -93,13 +94,12 @@ public class ProductController {
     @PostMapping
     public ResponseEntity<ProductDTO> createProduct(
             @Parameter(description = "Product details to create")
-            @RequestBody ProductDTO product) {
+            @Valid @RequestBody ProductCreateRequest productRequest) {
         try {
-            if (!productService.validateProduct(product)) {
-                return ResponseEntity.badRequest().build();
-            }
-            ProductDTO savedProduct = productService.saveProduct(product);
+            ProductDTO savedProduct = productService.saveProduct(productRequest);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedProduct);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -116,10 +116,12 @@ public class ProductController {
             @Parameter(description = "Product ID", example = "550e8400-e29b-41d4-a716-446655440000")
             @PathVariable String id,
             @Parameter(description = "Updated product details")
-            @RequestBody ProductDTO product) {
+            @Valid @RequestBody ProductUpdateRequest productRequest) {
         try {
-            ProductDTO updatedProduct = productService.updateProduct(id, product);
+            ProductDTO updatedProduct = productService.updateProduct(id, productRequest);
             return ResponseEntity.ok(updatedProduct);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
@@ -288,8 +290,8 @@ public class ProductController {
     }
 
     @PostMapping("/validate")
-    public ResponseEntity<Boolean> validateProduct(@RequestBody ProductDTO product) {
-        boolean isValid = productService.validateProduct(product);
+    public ResponseEntity<Boolean> validateProduct(@Valid @RequestBody ProductValidationRequest productRequest) {
+        boolean isValid = productService.validateProduct(productRequest);
         return ResponseEntity.ok(isValid);
     }
 }

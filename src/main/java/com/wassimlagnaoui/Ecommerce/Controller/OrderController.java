@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Optional;
@@ -55,10 +56,12 @@ public class OrderController {
             @ApiResponse(responseCode = "400", description = "Invalid order data")
     })
     @PostMapping
-    public ResponseEntity<OrderDTO> createOrder(@RequestBody OrderDTO order) {
+    public ResponseEntity<OrderDTO> createOrder(@Valid @RequestBody OrderCreateRequest orderRequest) {
         try {
-            OrderDTO savedOrder = orderService.saveOrder(order);
-            return ResponseEntity.status(HttpStatus.CREATED).body(savedOrder);
+            OrderDTO createdOrder = orderService.createOrder(orderRequest);
+            return ResponseEntity.status(HttpStatus.CREATED).body(createdOrder);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -71,10 +74,12 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @PutMapping("/{id}")
-    public ResponseEntity<OrderDTO> updateOrder(@PathVariable String id, @RequestBody OrderDTO order) {
+    public ResponseEntity<OrderDTO> updateOrder(@PathVariable String id, @Valid @RequestBody OrderUpdateRequest orderRequest) {
         try {
-            OrderDTO updatedOrder = orderService.updateOrder(id, order);
+            OrderDTO updatedOrder = orderService.updateOrder(id, orderRequest);
             return ResponseEntity.ok(updatedOrder);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
         }
@@ -171,10 +176,12 @@ public class OrderController {
             @ApiResponse(responseCode = "404", description = "Order not found")
     })
     @PostMapping("/{orderId}/items")
-    public ResponseEntity<OrderItemDTO> addOrderItem(@PathVariable String orderId, @RequestBody OrderItemDTO orderItem) {
+    public ResponseEntity<OrderItemDTO> addOrderItem(@PathVariable String orderId, @Valid @RequestBody OrderItemCreateRequest orderItemRequest) {
         try {
-            OrderItemDTO savedItem = orderService.addOrderItem(orderId, orderItem);
+            OrderItemDTO savedItem = orderService.addOrderItem(orderId, orderItemRequest);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedItem);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
         }
@@ -186,10 +193,14 @@ public class OrderController {
             @ApiResponse(responseCode = "400", description = "Invalid order or item data")
     })
     @PostMapping("/create")
-    public ResponseEntity<OrderDTO> createOrder(@RequestParam String customerId, @RequestBody List<OrderItemDTO> orderItems) {
+    public ResponseEntity<OrderDTO> createOrderWithItems(@RequestParam String customerId, @Valid @RequestBody List<OrderItemCreateRequest> orderItemRequests) {
         try {
-            OrderDTO createdOrder = orderService.createOrder(customerId, orderItems);
+            // Create OrderCreateRequest from the parameters
+            OrderCreateRequest orderRequest = new OrderCreateRequest(customerId, orderItemRequests);
+            OrderDTO createdOrder = orderService.createOrder(orderRequest);
             return ResponseEntity.status(HttpStatus.CREATED).body(createdOrder);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().build();
         }

@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
 import java.util.List;
 import java.util.Optional;
@@ -55,13 +56,12 @@ public class CustomerController {
             @ApiResponse(responseCode = "400", description = "Invalid customer data")
     })
     @PostMapping
-    public ResponseEntity<CustomerDTO> createCustomer(@RequestBody CustomerDTO customer) {
+    public ResponseEntity<CustomerDTO> createCustomer(@Valid @RequestBody CustomerCreateRequest customerRequest) {
         try {
-            if (!customerService.validateCustomer(customer)) {
-                return ResponseEntity.badRequest().build();
-            }
-            CustomerDTO savedCustomer = customerService.saveCustomer(customer);
+            CustomerDTO savedCustomer = customerService.saveCustomer(customerRequest);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedCustomer);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
             return ResponseEntity.badRequest().build();
         }
@@ -70,13 +70,16 @@ public class CustomerController {
     @Operation(summary = "Update an existing customer", description = "Modify the details of an existing customer")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Customer updated"),
-            @ApiResponse(responseCode = "404", description = "Customer not found")
+            @ApiResponse(responseCode = "404", description = "Customer not found"),
+            @ApiResponse(responseCode = "400", description = "Invalid customer data")
     })
     @PutMapping("/{id}")
-    public ResponseEntity<CustomerDTO> updateCustomer(@PathVariable String id, @RequestBody CustomerDTO customer) {
+    public ResponseEntity<CustomerDTO> updateCustomer(@PathVariable String id, @Valid @RequestBody CustomerUpdateRequest customerRequest) {
         try {
-            CustomerDTO updatedCustomer = customerService.updateCustomer(id, customer);
+            CustomerDTO updatedCustomer = customerService.updateCustomer(id, customerRequest);
             return ResponseEntity.ok(updatedCustomer);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
@@ -166,10 +169,12 @@ public class CustomerController {
             @ApiResponse(responseCode = "400", description = "Invalid address data")
     })
     @PostMapping("/{customerId}/addresses")
-    public ResponseEntity<AddressDTO> addAddressToCustomer(@PathVariable String customerId, @RequestBody AddressDTO address) {
+    public ResponseEntity<AddressDTO> addAddressToCustomer(@PathVariable String customerId, @Valid @RequestBody AddressCreateRequest addressRequest) {
         try {
-            AddressDTO savedAddress = customerService.addAddressToCustomer(customerId, address);
+            AddressDTO savedAddress = customerService.addAddressToCustomer(customerId, addressRequest);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedAddress);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
         } catch (RuntimeException e) {
             return ResponseEntity.notFound().build();
         }
@@ -218,8 +223,8 @@ public class CustomerController {
             @ApiResponse(responseCode = "400", description = "Invalid customer data")
     })
     @PostMapping("/validate")
-    public ResponseEntity<Boolean> validateCustomer(@RequestBody CustomerDTO customer) {
-        boolean isValid = customerService.validateCustomer(customer);
+    public ResponseEntity<Boolean> validateCustomer(@Valid @RequestBody CustomerCreateRequest customerRequest) {
+        boolean isValid = customerService.validateCustomer(customerRequest);
         return ResponseEntity.ok(isValid);
     }
 }
