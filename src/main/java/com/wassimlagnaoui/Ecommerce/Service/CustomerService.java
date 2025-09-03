@@ -8,6 +8,7 @@ import com.wassimlagnaoui.Ecommerce.Exception.CustomerNotFoundException;
 import com.wassimlagnaoui.Ecommerce.Repository.AddressRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.CustomerRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.OrderRepository;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -40,6 +41,18 @@ public class CustomerService {
         return customer.map(dtoMapper::toCustomerDTO);
     }
 
+    // Updated to accept Request DTOs with built-in validation
+    public CustomerDTO saveCustomer(CustomerCreateRequest customerRequest) {
+        // Validation is now handled in service layer
+        if (!validateCustomer(customerRequest)) {
+            throw new IllegalArgumentException("Invalid customer data");
+        }
+        Customer customer = dtoMapper.toCustomerEntity(customerRequest);
+        Customer savedCustomer = customerRepository.save(customer);
+        return dtoMapper.toCustomerDTO(savedCustomer);
+    }
+
+    // Keep the old method for backward compatibility
     public CustomerDTO saveCustomer(CustomerDTO customerDTO) {
         Customer customer = dtoMapper.toCustomerEntity(customerDTO);
         Customer savedCustomer = customerRepository.save(customer);
@@ -72,12 +85,38 @@ public class CustomerService {
                 .toList();
     }
 
-    // Address management - now returning DTOs
+    // Address management - updated to accept Request DTOs
     public List<AddressDTO> getCustomerAddresses(String customerId) {
         List<Address> addresses = addressRepository.findByCustomerId(customerId);
         return dtoMapper.toAddressDTOList(addresses);
     }
 
+    public AddressDTO addAddressToCustomer(String customerId, AddressCreateRequest addressRequest) {
+        // Validate address data
+        if (addressRequest.getStreet() == null || addressRequest.getStreet().trim().isEmpty()) {
+            throw new IllegalArgumentException("Street address is required");
+        }
+        if (addressRequest.getCity() == null || addressRequest.getCity().trim().isEmpty()) {
+            throw new IllegalArgumentException("City is required");
+        }
+        if (addressRequest.getState() == null || addressRequest.getState().trim().isEmpty()) {
+            throw new IllegalArgumentException("State is required");
+        }
+        if (addressRequest.getCountry() == null || addressRequest.getCountry().trim().isEmpty()) {
+            throw new IllegalArgumentException("Country is required");
+        }
+
+        Optional<Customer> customer = customerRepository.findById(customerId);
+        if (customer.isPresent()) {
+            Address address = dtoMapper.toAddressEntity(addressRequest);
+            address.setCustomer(customer.get());
+            Address savedAddress = addressRepository.save(address);
+            return dtoMapper.toAddressDTO(savedAddress);
+        }
+        throw new CustomerNotFoundException(customerId);
+    }
+
+    // Keep the old method for backward compatibility
     public AddressDTO addAddressToCustomer(String customerId, AddressDTO addressDTO) {
         Optional<Customer> customer = customerRepository.findById(customerId);
         if (customer.isPresent()) {
@@ -113,7 +152,37 @@ public class CustomerService {
         throw new CustomerNotFoundException(customerId);
     }
 
-    // Update customer information - now using DTOs
+    // Update customer information - updated to accept Request DTOs with validation
+    public CustomerDTO updateCustomer(String id, CustomerUpdateRequest customerRequest) {
+        // Validation for update request (less strict than create)
+        if (customerRequest.getName() == null || customerRequest.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Customer name cannot be empty");
+        }
+        if (customerRequest.getEmail() == null || customerRequest.getEmail().trim().isEmpty()) {
+            throw new IllegalArgumentException("Customer email cannot be empty");
+        }
+
+        Optional<Customer> customerOpt = customerRepository.findById(id);
+        if (customerOpt.isPresent()) {
+            Customer customer = customerOpt.get();
+
+            // Check if email is already taken by another customer
+            if (!customer.getEmail().equals(customerRequest.getEmail()) && existsByEmail(customerRequest.getEmail())) {
+                throw new IllegalArgumentException("Email already exists");
+            }
+
+            customer.setName(customerRequest.getName());
+            customer.setEmail(customerRequest.getEmail());
+            if (customerRequest.getTotalSpent() != null) {
+                customer.setTotalSpent(customerRequest.getTotalSpent());
+            }
+            Customer savedCustomer = customerRepository.save(customer);
+            return dtoMapper.toCustomerDTO(savedCustomer);
+        }
+        throw new CustomerNotFoundException(id);
+    }
+
+    // Keep the old method for backward compatibility
     public CustomerDTO updateCustomer(String id, CustomerDTO updatedCustomerDTO) {
         Optional<Customer> customerOpt = customerRepository.findById(id);
         if (customerOpt.isPresent()) {
@@ -129,7 +198,22 @@ public class CustomerService {
         throw new CustomerNotFoundException(id);
     }
 
-    // Validate customer before operations - now using DTO
+    // Validate customer - updated to accept Request DTOs
+    public boolean validateCustomer(@Valid CustomerCreateRequest customerRequest) {
+        if (customerRequest.getName() == null || customerRequest.getName().trim().isEmpty()) {
+            return false;
+        }
+        if (customerRequest.getEmail() == null || customerRequest.getEmail().trim().isEmpty()) {
+            return false;
+        }
+        return !existsByEmail(customerRequest.getEmail());
+    }
+
+
+
+
+
+    // Keep the old method for backward compatibility
     public boolean validateCustomer(CustomerDTO customerDTO) {
         if (customerDTO.getName() == null || customerDTO.getName().trim().isEmpty()) {
             return false;
