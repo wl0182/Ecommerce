@@ -223,4 +223,19 @@ public class CustomerService {
         }
         return !existsByEmail(customerDTO.getEmail());
     }
+
+    public CustomerDTO updateCustomerEmail(String id, String email) {
+        Optional<Customer> customerOpt = customerRepository.findById(id);
+        if (customerOpt.isPresent()) {
+            Customer customer = customerOpt.get();
+            // Check if email is already taken by another customer
+            if (!customer.getEmail().equals(email) && existsByEmail(email)) {
+                throw new IllegalArgumentException("Email already exists");
+            }
+            customer.setEmail(email);
+            Customer savedCustomer = customerRepository.save(customer);
+            return dtoMapper.toCustomerDTO(savedCustomer);
+        }
+        throw new CustomerNotFoundException(id);
+    }
 }

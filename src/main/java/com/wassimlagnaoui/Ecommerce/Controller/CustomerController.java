@@ -85,6 +85,25 @@ public class CustomerController {
         }
     }
 
+    // Patch method to partially update a customer email
+    @Operation(summary = "Partially update a customer email", description = "Modify the email of an existing customer")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Customer email updated"),
+            @ApiResponse(responseCode = "404", description = "Customer not found"),
+            @ApiResponse(responseCode = "400", description = "Invalid email data")
+    })
+    @PatchMapping("/{id}/email")
+    public ResponseEntity<CustomerDTO> updateCustomerEmail(@PathVariable String id, @RequestParam String email) {
+        try {
+            CustomerDTO updatedCustomer = customerService.updateCustomerEmail(id, email);
+            return ResponseEntity.ok(updatedCustomer);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
     @Operation(summary = "Delete a customer", description = "Remove a customer from the system")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "204", description = "Customer deleted"),
