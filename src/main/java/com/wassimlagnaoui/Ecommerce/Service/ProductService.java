@@ -12,6 +12,10 @@ import com.wassimlagnaoui.Ecommerce.Repository.ProductRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.ReviewRepository;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -35,6 +39,7 @@ public class ProductService {
     private DTOMapper dtoMapper;
 
     // Basic CRUD operations - now returning DTOs
+    @Cacheable(value = "products", cacheManager = "productCacheManager")
     public List<ProductDTO> getAllProducts() {
         List<Product> products = productRepository.findAll();
         return dtoMapper.toProductDTOList(products);
@@ -45,12 +50,17 @@ public class ProductService {
         return products.map(dtoMapper::toProductDTO);
     }
 
+    @Cacheable(value = "product", key = "#id", cacheManager = "productCacheManager")
     public Optional<ProductDTO> getProductById(String id) {
         Optional<Product> product = productRepository.findById(id);
         return product.map(dtoMapper::toProductDTO);
     }
 
     // Updated to accept Request DTOs with built-in validation
+    @Caching(evict = {
+        @CacheEvict(value = "products", cacheManager = "productCacheManager"),
+        @CacheEvict(value = "product", key = "#result.id", cacheManager = "productCacheManager", condition = "#result != null")
+    })
     public ProductDTO saveProduct(ProductCreateRequest productRequest) {
         // Validation is now handled in service layer
         if (!validateProduct(productRequest)) {
@@ -62,59 +72,76 @@ public class ProductService {
     }
 
     // Keep the old method for backward compatibility
+    @Caching(evict = {
+        @CacheEvict(value = "products", cacheManager = "productCacheManager"),
+        @CacheEvict(value = "product", key = "#result.id", cacheManager = "productCacheManager", condition = "#result != null")
+    })
     public ProductDTO saveProduct(ProductDTO productDTO) {
         Product product = dtoMapper.toProductEntity(productDTO);
         Product savedProduct = productRepository.save(product);
         return dtoMapper.toProductDTO(savedProduct);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "products", cacheManager = "productCacheManager"),
+        @CacheEvict(value = "product", key = "#id", cacheManager = "productCacheManager")
+    })
     public void deleteProduct(String id) {
         productRepository.deleteById(id);
     }
 
     // Product search and filtering - now returning DTOs
+    @Cacheable(value = "product", key = "'name:' + #name", cacheManager = "productCacheManager")
     public Optional<ProductDTO> findByName(String name) {
         Optional<Product> product = productRepository.findByName(name);
         return product.map(dtoMapper::toProductDTO);
     }
 
+    @Cacheable(value = "products", key = "'search:' + #keyword", cacheManager = "productCacheManager")
     public List<ProductDTO> searchByKeyword(String keyword) {
         List<Product> products = productRepository.searchByKeyword(keyword);
         return dtoMapper.toProductDTOList(products);
     }
 
+    @Cacheable(value = "products", key = "'priceRange:' + #minPrice + '-' + #maxPrice", cacheManager = "productCacheManager")
     public List<ProductDTO> findByPriceRange(Double minPrice, Double maxPrice) {
         List<Product> products = productRepository.findByPriceBetween(minPrice, maxPrice);
         return dtoMapper.toProductDTOList(products);
     }
 
+    @Cacheable(value = "products", key = "'category:' + #categoryName", cacheManager = "productCacheManager")
     public List<ProductDTO> findByCategoryName(String categoryName) {
         List<Product> products = productRepository.findByCategoryName(categoryName);
         return dtoMapper.toProductDTOList(products);
     }
 
     // Stock management - now returning DTOs
+    @Cacheable(value = "products", key = "'inStock'", cacheManager = "productCacheManager")
     public List<ProductDTO> getProductsInStock() {
         List<Product> products = productRepository.findByStockGreaterThan(0);
         return dtoMapper.toProductDTOList(products);
     }
 
+    @Cacheable(value = "products", key = "'outOfStock'", cacheManager = "productCacheManager")
     public List<ProductDTO> getOutOfStockProducts() {
         List<Product> products = productRepository.findByStockLessThan(1);
         return dtoMapper.toProductDTOList(products);
     }
 
+    @Cacheable(value = "products", key = "'lowStock:' + #threshold", cacheManager = "productCacheManager")
     public List<ProductDTO> getLowStockProducts(Integer threshold) {
         List<Product> products = productRepository.findProductsWithLowStock(threshold);
         return dtoMapper.toProductDTOList(products);
     }
 
+    @Cacheable(value = "products", key = "'topStock'", cacheManager = "productCacheManager")
     public List<ProductDTO> getTopStockProducts() {
         List<Product> products = productRepository.findTop5ByOrderByStockDesc();
         return dtoMapper.toProductDTOList(products);
     }
 
     // Sales and popularity - now returning DTOs
+    @Cacheable(value = "products", key = "'topSelling'", cacheManager = "productCacheManager")
     public List<ProductSummaryDTO> getTopSellingProducts() {
         List<Product> products = productRepository.findTopSellingProducts();
         return products.stream()
@@ -127,6 +154,15 @@ public class ProductService {
     }
 
     // Stock operations - now returning DTOs
+    @Caching(
+        put = @CachePut(value = "product", key = "#productId", cacheManager = "productCacheManager"),
+        evict = {
+            @CacheEvict(value = "products", cacheManager = "productCacheManager"),
+            @CacheEvict(value = "products", key = "'inStock'", cacheManager = "productCacheManager"),
+            @CacheEvict(value = "products", key = "'outOfStock'", cacheManager = "productCacheManager"),
+            @CacheEvict(value = "products", key = "'topStock'", cacheManager = "productCacheManager")
+        }
+    )
     public ProductDTO updateStock(String productId, Integer newStock) {
         Optional<Product> productOpt = productRepository.findById(productId);
         if (productOpt.isPresent()) {
@@ -138,6 +174,15 @@ public class ProductService {
         throw new ProductNotFoundException(productId);
     }
 
+    @Caching(
+        put = @CachePut(value = "product", key = "#productId", cacheManager = "productCacheManager"),
+        evict = {
+            @CacheEvict(value = "products", cacheManager = "productCacheManager"),
+            @CacheEvict(value = "products", key = "'inStock'", cacheManager = "productCacheManager"),
+            @CacheEvict(value = "products", key = "'outOfStock'", cacheManager = "productCacheManager"),
+            @CacheEvict(value = "products", key = "'topStock'", cacheManager = "productCacheManager")
+        }
+    )
     public ProductDTO reduceStock(String productId, Integer quantity) {
         Optional<Product> productOpt = productRepository.findById(productId);
         if (productOpt.isPresent()) {
@@ -152,6 +197,12 @@ public class ProductService {
         throw new ProductNotFoundException(productId);
     }
 
+    @Caching(
+        put = @CachePut(value = "product", key = "#productId", cacheManager = "productCacheManager"),
+        evict = {
+            @CacheEvict(value = "products", key = "'topSelling'", cacheManager = "productCacheManager")
+        }
+    )
     public ProductDTO increaseSalesCount(String productId, Integer quantity) {
         Optional<Product> productOpt = productRepository.findById(productId);
         if (productOpt.isPresent()) {
@@ -165,19 +216,23 @@ public class ProductService {
     }
 
     // Review management - now returning DTOs
+    @Cacheable(value = "product", key = "'reviews:' + #productId", cacheManager = "productCacheManager")
     public List<ReviewDTO> getProductReviews(String productId) {
         List<Review> reviews = reviewRepository.findByProductId(productId);
         return dtoMapper.toReviewDTOList(reviews);
     }
 
+    @Cacheable(value = "product", key = "'avgRating:' + #productId", cacheManager = "productCacheManager")
     public Double getProductAverageRating(String productId) {
         return reviewRepository.findAverageRatingByProductId(productId);
     }
 
+    @Cacheable(value = "product", key = "'reviewCount:' + #productId", cacheManager = "productCacheManager")
     public Long getProductReviewCount(String productId) {
         return reviewRepository.countReviewsByProductId(productId);
     }
 
+    @Cacheable(value = "product", key = "'reviewsByRating:' + #productId + ':' + #minRating", cacheManager = "productCacheManager")
     public List<ReviewDTO> getProductReviewsByRating(String productId, Integer minRating) {
         List<Review> productReviews = reviewRepository.findByProductId(productId);
         List<Review> filteredReviews = productReviews.stream()
@@ -187,6 +242,7 @@ public class ProductService {
     }
 
     // Get product with rating summary
+    @Cacheable(value = "product", key = "'summary:' + #productId", cacheManager = "productCacheManager")
     public ProductSummaryDTO getProductSummary(String productId) {
         Optional<Product> productOpt = productRepository.findById(productId);
         if (productOpt.isPresent()) {
@@ -199,6 +255,13 @@ public class ProductService {
     }
 
     // Category management - now returning DTOs
+    @Caching(
+        put = @CachePut(value = "product", key = "#productId", cacheManager = "productCacheManager"),
+        evict = {
+            @CacheEvict(value = "products", cacheManager = "productCacheManager"),
+            @CacheEvict(value = "products", key = "'category:' + #categoryName", cacheManager = "productCacheManager")
+        }
+    )
     public ProductDTO addCategoryToProduct(String productId, String categoryName) {
         Optional<Product> productOpt = productRepository.findById(productId);
         Optional<Category> categoryOpt = categoryRepository.findByName(categoryName);
@@ -217,16 +280,25 @@ public class ProductService {
     }
 
     // Product validation and business logic
+    @Cacheable(value = "product", key = "'exists:' + #name", cacheManager = "productCacheManager")
     public boolean existsByName(String name) {
         return productRepository.existsByName(name);
     }
 
+    @Cacheable(value = "product", key = "'available:' + #productId + ':' + #requestedQuantity", cacheManager = "productCacheManager")
     public boolean isProductAvailable(String productId, Integer requestedQuantity) {
         Optional<Product> productOpt = productRepository.findById(productId);
         return productOpt.isPresent() && productOpt.get().getStock() >= requestedQuantity;
     }
 
     // Update product - updated to accept Request DTOs with validation
+    @Caching(
+        put = @CachePut(value = "product", key = "#id", cacheManager = "productCacheManager"),
+        evict = {
+            @CacheEvict(value = "products", cacheManager = "productCacheManager"),
+            @CacheEvict(value = "product", key = "'exists:' + #productRequest.name", cacheManager = "productCacheManager", condition = "#productRequest.name != null")
+        }
+    )
     public ProductDTO updateProduct(String id, ProductUpdateRequest productRequest) {
         // Validation for update request
         if (productRequest.getName() == null || productRequest.getName().trim().isEmpty()) {
@@ -267,6 +339,13 @@ public class ProductService {
     }
 
     // Keep the old method for backward compatibility
+    @Caching(
+        put = @CachePut(value = "product", key = "#id", cacheManager = "productCacheManager"),
+        evict = {
+            @CacheEvict(value = "products", cacheManager = "productCacheManager"),
+            @CacheEvict(value = "product", key = "'exists:' + #updatedProductDTO.name", cacheManager = "productCacheManager", condition = "#updatedProductDTO.name != null")
+        }
+    )
     public ProductDTO updateProduct(String id, ProductDTO updatedProductDTO) {
         Optional<Product> productOpt = productRepository.findById(id);
         if (productOpt.isPresent()) {
