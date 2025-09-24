@@ -15,6 +15,10 @@ import com.wassimlagnaoui.Ecommerce.Repository.OrderItemRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.OrderRepository;
 import com.wassimlagnaoui.Ecommerce.Repository.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,28 +50,40 @@ public class OrderService {
     @Autowired
     private DTOMapper dtoMapper;
 
-    // Basic CRUD operations - now returning DTOs with optimized queries
+    // Basic CRUD operations - now with caching
+    @Cacheable(value = "orders", cacheManager = "orderCacheManager")
     public List<OrderDTO> getAllOrders() {
         List<Order> orders = orderRepository.findAllWithOrderItems();
         return dtoMapper.toOrderDTOList(orders);
     }
 
+    @Cacheable(value = "order", key = "#id", cacheManager = "orderCacheManager")
     public Optional<OrderDTO> getOrderById(String id) {
         Optional<Order> order = orderRepository.findByIdWithOrderItems(id);
         return order.map(dtoMapper::toOrderDTO);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "orders", cacheManager = "orderCacheManager"),
+        @CacheEvict(value = "order", key = "#result.id", cacheManager = "orderCacheManager", condition = "#result != null")
+    })
     public OrderDTO saveOrder(OrderDTO orderDTO) {
         Order order = dtoMapper.toOrderEntity(orderDTO);
         Order savedOrder = orderRepository.save(order);
         return dtoMapper.toOrderDTO(savedOrder);
     }
 
+    @Caching(evict = {
+        @CacheEvict(value = "orders", cacheManager = "orderCacheManager"),
+        @CacheEvict(value = "order", key = "#id", cacheManager = "orderCacheManager"),
+        @CacheEvict(value = "userOrders", cacheManager = "orderCacheManager")
+    })
     public void deleteOrder(String id) {
         orderRepository.deleteById(id);
     }
 
-    // Order search and filtering - now using optimized queries where appropriate
+    // Order search and filtering - with caching
+    @Cacheable(value = "order", key = "'orderNumber:' + #orderNumber", cacheManager = "orderCacheManager")
     public Optional<OrderDTO> findByOrderNumber(String orderNumber) {
         Optional<Order> order = orderRepository.findByOrderNumber(orderNumber);
         // If order exists, fetch it with order items for complete DTO mapping
@@ -78,26 +94,27 @@ public class OrderService {
         return Optional.empty();
     }
 
+    @Cacheable(value = "userOrders", key = "'customer:' + #customerId", cacheManager = "orderCacheManager")
     public List<OrderDTO> getOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findByCustomerId(customerId);
-        // For multiple orders, use the optimized query if we need order items
-        // Otherwise, use the simple query to avoid unnecessary joins
         return dtoMapper.toOrderDTOList(orders);
     }
 
+    @Cacheable(value = "orders", key = "'status:' + #status", cacheManager = "orderCacheManager")
     public List<OrderDTO> getOrdersByStatus(String status) {
         List<Order> orders = orderRepository.findByStatus(status);
         return dtoMapper.toOrderDTOList(orders);
     }
 
+    @Cacheable(value = "userOrders", key = "'customer:' + #customerId + ':status:' + #status", cacheManager = "orderCacheManager")
     public List<OrderDTO> getCustomerOrdersByStatus(String customerId, String status) {
         List<Order> orders = orderRepository.findByCustomerIdAndStatus(customerId, status);
         return dtoMapper.toOrderDTOList(orders);
     }
 
-    // Order item management - optimized to reduce queries
+    // Order item management - with caching
+    @Cacheable(value = "order", key = "'items:' + #orderId", cacheManager = "orderCacheManager")
     public List<OrderItemDTO> getOrderItems(String orderId) {
-        // Use the optimized query to get order with items in one query
         Optional<Order> order = orderRepository.findByIdWithOrderItems(orderId);
         if (order.isPresent()) {
             return dtoMapper.toOrderItemDTOList(order.get().getOrderItems());
@@ -105,13 +122,18 @@ public class OrderService {
         return List.of();
     }
 
+    @Cacheable(value = "orders", key = "'itemsByProduct:' + #productName", cacheManager = "orderCacheManager")
     public List<OrderItemDTO> findOrderItemsByProductName(String productName) {
         List<OrderItem> orderItems = orderItemRepository.findByProductName(productName);
         return dtoMapper.toOrderItemDTOList(orderItems);
     }
 
-    // Order creation and processing - updated to accept Request DTOs with validation
+    // Order creation and processing - with cache eviction
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "orders", cacheManager = "orderCacheManager"),
+        @CacheEvict(value = "userOrders", key = "'customer:' + #orderRequest.customerId", cacheManager = "orderCacheManager", condition = "#orderRequest.customerId != null")
+    })
     public OrderDTO createOrder(OrderCreateRequest orderRequest) {
         // Validation is now handled in service layer
         if (orderRequest.getCustomerId() == null || orderRequest.getCustomerId().trim().isEmpty()) {
@@ -148,6 +170,10 @@ public class OrderService {
 
     // Keep the existing createOrder method for backward compatibility
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "orders", cacheManager = "orderCacheManager"),
+        @CacheEvict(value = "userOrders", key = "'customer:' + #customerId", cacheManager = "orderCacheManager")
+    })
     public OrderDTO createOrder(String customerId, List<OrderItemDTO> orderItemDTOs) {
         // Use optimized customer query if available
         Optional<Customer> customerOpt = customerRepository.findById(customerId);
@@ -204,7 +230,14 @@ public class OrderService {
                 .orElse(dtoMapper.toOrderDTO(savedOrder));
     }
 
-    // Order status management - now using optimized queries
+    // Order status management - with cache updates
+    @Caching(
+        put = @CachePut(value = "order", key = "#orderId", cacheManager = "orderCacheManager"),
+        evict = {
+            @CacheEvict(value = "orders", cacheManager = "orderCacheManager"),
+            @CacheEvict(value = "userOrders", cacheManager = "orderCacheManager")
+        }
+    )
     public OrderDTO updateOrderStatus(String orderId, String newStatus) {
         Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(orderId);
         if (orderOpt.isPresent()) {
@@ -216,18 +249,49 @@ public class OrderService {
         throw new OrderNotFoundException(orderId);
     }
 
+    @Caching(
+        put = @CachePut(value = "order", key = "#orderId", cacheManager = "orderCacheManager"),
+        evict = {
+            @CacheEvict(value = "orders", key = "'status:PENDING'", cacheManager = "orderCacheManager"),
+            @CacheEvict(value = "orders", key = "'status:PROCESSING'", cacheManager = "orderCacheManager"),
+            @CacheEvict(value = "userOrders", cacheManager = "orderCacheManager")
+        }
+    )
     public OrderDTO processOrder(String orderId) {
         return updateOrderStatus(orderId, "PROCESSING");
     }
 
+    @Caching(
+        put = @CachePut(value = "order", key = "#orderId", cacheManager = "orderCacheManager"),
+        evict = {
+            @CacheEvict(value = "orders", key = "'status:PROCESSING'", cacheManager = "orderCacheManager"),
+            @CacheEvict(value = "orders", key = "'status:SHIPPED'", cacheManager = "orderCacheManager"),
+            @CacheEvict(value = "userOrders", cacheManager = "orderCacheManager")
+        }
+    )
     public OrderDTO shipOrder(String orderId) {
         return updateOrderStatus(orderId, "SHIPPED");
     }
 
+    @Caching(
+        put = @CachePut(value = "order", key = "#orderId", cacheManager = "orderCacheManager"),
+        evict = {
+            @CacheEvict(value = "orders", key = "'status:SHIPPED'", cacheManager = "orderCacheManager"),
+            @CacheEvict(value = "orders", key = "'status:DELIVERED'", cacheManager = "orderCacheManager"),
+            @CacheEvict(value = "userOrders", cacheManager = "orderCacheManager")
+        }
+    )
     public OrderDTO deliverOrder(String orderId) {
         return updateOrderStatus(orderId, "DELIVERED");
     }
 
+    @Caching(
+        put = @CachePut(value = "order", key = "#orderId", cacheManager = "orderCacheManager"),
+        evict = {
+            @CacheEvict(value = "orders", cacheManager = "orderCacheManager"),
+            @CacheEvict(value = "userOrders", cacheManager = "orderCacheManager")
+        }
+    )
     public OrderDTO cancelOrder(String orderId) {
         Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(orderId);
         if (orderOpt.isPresent()) {
@@ -261,7 +325,13 @@ public class OrderService {
         throw new OrderNotFoundException(orderId);
     }
 
-    // Order item operations - updated to accept Request DTOs with validation
+    // Order item operations - with cache eviction
+    @Caching(evict = {
+        @CacheEvict(value = "order", key = "#orderId", cacheManager = "orderCacheManager"),
+        @CacheEvict(value = "order", key = "'items:' + #orderId", cacheManager = "orderCacheManager"),
+        @CacheEvict(value = "orders", cacheManager = "orderCacheManager"),
+        @CacheEvict(value = "userOrders", cacheManager = "orderCacheManager")
+    })
     public OrderItemDTO addOrderItem(String orderId, OrderItemCreateRequest orderItemRequest) {
         // Validation for order item
         if (orderItemRequest.getProductName() == null || orderItemRequest.getProductName().trim().isEmpty()) {
@@ -281,6 +351,12 @@ public class OrderService {
     }
 
     // Keep the existing method for backward compatibility
+    @Caching(evict = {
+        @CacheEvict(value = "order", key = "#orderId", cacheManager = "orderCacheManager"),
+        @CacheEvict(value = "order", key = "'items:' + #orderId", cacheManager = "orderCacheManager"),
+        @CacheEvict(value = "orders", cacheManager = "orderCacheManager"),
+        @CacheEvict(value = "userOrders", cacheManager = "orderCacheManager")
+    })
     public OrderItemDTO addOrderItem(String orderId, OrderItemDTO orderItemDTO) {
         Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(orderId);
         if (orderOpt.isPresent()) {
@@ -304,7 +380,8 @@ public class OrderService {
         throw new OrderNotFoundException(orderId);
     }
 
-    // Order calculations - using optimized queries
+    // Order calculations - with caching
+    @Cacheable(value = "order", key = "'total:' + #orderId", cacheManager = "orderCacheManager")
     public Double calculateOrderTotal(String orderId) {
         Optional<Order> order = orderRepository.findByIdWithOrderItems(orderId);
         if (order.isPresent()) {
@@ -315,6 +392,7 @@ public class OrderService {
         return 0.0;
     }
 
+    @Cacheable(value = "order", key = "'itemCount:' + #orderId", cacheManager = "orderCacheManager")
     public Integer getOrderItemCount(String orderId) {
         Optional<Order> order = orderRepository.findByIdWithOrderItems(orderId);
         return order.map(o -> o.getOrderItems().size()).orElse(0);
@@ -333,12 +411,14 @@ public class OrderService {
         throw new ProductNotFoundException(productName, true);
     }
 
-    // Order validation - using optimized queries
+    // Order validation - with caching
+    @Cacheable(value = "order", key = "'canProcess:' + #orderId", cacheManager = "orderCacheManager")
     public boolean canProcessOrder(String orderId) {
         Optional<Order> order = orderRepository.findById(orderId);
         return order.isPresent() && "PENDING".equals(order.get().getStatus());
     }
 
+    @Cacheable(value = "order", key = "'canCancel:' + #orderId", cacheManager = "orderCacheManager")
     public boolean canCancelOrder(String orderId) {
         Optional<Order> order = orderRepository.findById(orderId);
         if (order.isPresent()) {
@@ -348,7 +428,14 @@ public class OrderService {
         return false;
     }
 
-    // Update order - updated to accept Request DTOs with validation
+    // Update order - with cache updates
+    @Caching(
+        put = @CachePut(value = "order", key = "#id", cacheManager = "orderCacheManager"),
+        evict = {
+            @CacheEvict(value = "orders", cacheManager = "orderCacheManager"),
+            @CacheEvict(value = "userOrders", cacheManager = "orderCacheManager")
+        }
+    )
     public OrderDTO updateOrder(String id, OrderUpdateRequest orderRequest) {
         // Validation for update request
         if (orderRequest.getStatus() == null || orderRequest.getStatus().trim().isEmpty()) {
@@ -378,6 +465,13 @@ public class OrderService {
     }
 
     // Keep the existing method for backward compatibility
+    @Caching(
+        put = @CachePut(value = "order", key = "#id", cacheManager = "orderCacheManager"),
+        evict = {
+            @CacheEvict(value = "orders", cacheManager = "orderCacheManager"),
+            @CacheEvict(value = "userOrders", cacheManager = "orderCacheManager")
+        }
+    )
     public OrderDTO updateOrder(String id, OrderDTO updatedOrderDTO) {
         Optional<Order> orderOpt = orderRepository.findByIdWithOrderItems(id);
         if (orderOpt.isPresent()) {
@@ -398,42 +492,50 @@ public class OrderService {
         throw new OrderNotFoundException(id);
     }
 
-    // Add new methods to leverage specific repository queries
+    // Customer-specific order queries - with caching
+    @Cacheable(value = "userOrders", key = "'customer:' + #customerId + ':completed'", cacheManager = "orderCacheManager")
     public List<OrderDTO> getCompletedOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findCompletedOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
+    @Cacheable(value = "userOrders", key = "'customer:' + #customerId + ':pending'", cacheManager = "orderCacheManager")
     public List<OrderDTO> getPendingOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findPendingOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
+    @Cacheable(value = "userOrders", key = "'customer:' + #customerId + ':cancelled'", cacheManager = "orderCacheManager")
     public List<OrderDTO> getCancelledOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findCancelledOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
+    @Cacheable(value = "userOrders", key = "'customer:' + #customerId + ':shipped'", cacheManager = "orderCacheManager")
     public List<OrderDTO> getShippedOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findShippedOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
+    @Cacheable(value = "userOrders", key = "'customer:' + #customerId + ':delivered'", cacheManager = "orderCacheManager")
     public List<OrderDTO> getDeliveredOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findDeliveredOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
+    @Cacheable(value = "userOrders", key = "'customer:' + #customerId + ':returned'", cacheManager = "orderCacheManager")
     public List<OrderDTO> getReturnedOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findReturnedOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
+    @Cacheable(value = "userOrders", key = "'customer:' + #customerId + ':refunded'", cacheManager = "orderCacheManager")
     public List<OrderDTO> getRefundedOrdersByCustomer(String customerId) {
         List<Order> orders = orderRepository.findRefundedOrdersByCustomerId(customerId);
         return dtoMapper.toOrderDTOList(orders);
     }
 
+    @Cacheable(value = "orders", key = "'aboveAmount:' + #amount", cacheManager = "orderCacheManager")
     public List<OrderDTO> getOrdersAboveAmount(Double amount) {
         List<Order> orders = orderRepository.findByTotalAmountGreaterThan(amount);
         return dtoMapper.toOrderDTOList(orders);
